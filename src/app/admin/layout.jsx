@@ -1,8 +1,16 @@
-export default function AdminLayout({ children }) {
+"use client"
+import Sidebar from "@/components/Sidebar";
+import Topbar from "@/components/Topbar";
+import { Box } from "@mui/material";
+
+export default function Layout({ children }) {
   return (
-    <section className="min-h-screen bg-gray-100">
-      <h1 className="text-3xl font-bold p-4">Admin Panel</h1>
-      {children}
-    </section>
+    <Box sx={{ display: "flex", height: "100vh" }}>
+      <Sidebar />
+      <Box sx={{ flexGrow: 1 }}>
+        <Topbar />
+        <Box sx={{ p: 3 }}>{children}</Box>
+      </Box>
+    </Box>
   );
 }
