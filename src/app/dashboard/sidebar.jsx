@@ -19,21 +19,22 @@ import { usePathname } from 'next/navigation';
 const drawerWidth = 240;
 
 const navItems = [
-  { label: 'Dashboard', path: '/admin', icon: <DashboardIcon /> },
+  { label: 'Dashboard', path: '/dashboard', icon: <DashboardIcon /> },
   { label: 'Candidates', path: '/admin/candidates', icon: <PeopleIcon /> },
   { label: 'Jobs', path: '/admin/jobs', icon: <WorkIcon /> },
   { label: 'Settings', path: '/admin/settings', icon: <SettingsIcon /> },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ open, onClose }) {
   const pathname = usePathname();
 
   return (
     <Drawer
-      variant="permanent"
+      variant="temporary"
+      open={open}
+      onClose={onClose}
+      ModalProps={{ keepMounted: true }}
       sx={{
-        width: drawerWidth,
-        flexShrink: 0,
         [`& .MuiDrawer-paper`]: {
           width: drawerWidth,
           boxSizing: 'border-box',

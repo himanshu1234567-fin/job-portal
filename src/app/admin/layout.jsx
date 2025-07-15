@@ -1,6 +1,6 @@
 "use client"
-import Sidebar from "@/components/Sidebar";
-import Topbar from "@/components/Topbar";
+import Sidebar from "../../components/Sidebar";
+import Topbar from "../../components/Topbar";
 import { Box } from "@mui/material";
 
 export default function Layout({ children }) {
