@@ -87,11 +87,14 @@ export default function ResumeBuilder() {
       <AppBar position="static" color="transparent" elevation={0}>
         <Toolbar sx={{ justifyContent: 'space-between' }}>
           <Box display="flex" alignItems="center">
-            <img
-              alt="Logo"
-              src="https://tailwindcss.com/plus-assets/img/logos/mark.svg?color=indigo&shade=600"
-              height={40}
-            />
+            <a href="/">
+              <img
+                alt="Logo"
+                src="https://img.freepik.com/free-vector/colorful-bird-illustration-gradient_343694-1741.jpg?t=st=1752471682~exp=1752475282~hmac=17062921b52414c79b52ba8254b417ef2c1b4237363dceba21467b0a0b779154&w=1380"
+                height={40}
+                className='w-16'
+              />
+            </a>
           </Box>
 
           <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 3 }}>
@@ -144,7 +147,7 @@ export default function ResumeBuilder() {
           Build a Resume/CV in 5 minutes.
         </Typography>
         <Box mt={4} display="flex" justifyContent="center" gap={2}>
-          {!currentUser && (
+          {!currentUser ? (
             <Button
               href="/sign"
               variant="contained"
@@ -152,6 +155,15 @@ export default function ResumeBuilder() {
               size="large"
             >
               Get started
+            </Button>
+          ) : (
+            <Button
+              href="/user/test"
+              variant="contained"
+              color="success"
+              size="large"
+            >
+              Take Test
             </Button>
           )}
           <Button href="#" color="inherit" size="large">

@@ -1,6 +1,5 @@
-// src/app/layout.jsx
 
-import '../../app/globals.css'; // Optional: if you’re using Tailwind or global styles
+import '../../app/globals.css';
 
 export const metadata = {
   title: 'Next.js',

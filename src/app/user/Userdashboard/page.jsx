@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import CreativeUserHeader from "./UserHeader/page";
-import Sidebar from "@/app/admindashboard/sidebar";
+import Sidebar from "/src/components/Sidebar";
 import {
   Box,
   Typography,

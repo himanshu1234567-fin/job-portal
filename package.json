@@ -13,16 +13,21 @@
     "@mui/icons-material": "^5.18.0",
     "@mui/material": "^5.18.0",
     "@tabler/icons-react": "^3.34.0",
+    "@tailwindcss/postcss": "^4.1.11",
+    "autoprefixer": "^10.4.17",
     "axios": "^1.10.0",
     "next": "13.4.19",
     "react": "18.2.0",
-    "react-dom": "18.2.0"
+    "react-dom": "18.2.0",
+    "tailwind": "^4.0.0"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.1.11",
+    "@types/node": "24.0.13",
+    "@types/react": "19.1.8",
     "autoprefixer": "^10.4.21",
     "nodemon": "^3.1.10",
     "postcss": "^8.5.6",
-    "tailwindcss": "^4.1.11"
+    "tailwindcss": "^3.4.17",
+    "typescript": "5.8.3"
   }
 }
