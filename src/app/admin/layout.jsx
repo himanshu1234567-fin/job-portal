@@ -8,7 +8,7 @@ export default function Layout({ children }) {
     <Box sx={{ display: "flex", height: "100vh" }}>
       <Sidebar />
       <Box sx={{ flexGrow: 1 }}>
-        <Topbar />
+        
         <Box sx={{ p: 3 }}>{children}</Box>
       </Box>
     </Box>

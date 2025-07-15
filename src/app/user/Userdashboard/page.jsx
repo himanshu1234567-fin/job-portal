@@ -1,32 +1,92 @@
-"use client"
-import Layout from "@/app/admin/layout";
-import { Tabs, Tab, Box, Typography } from "@mui/material";
-import { useState } from "react";
+"use client";
 
-export default function DashboardPage() {
-  const [tab, setTab] = useState(0);
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import CreativeUserHeader from "./UserHeader/page";
+import Sidebar from "@/app/admindashboard/sidebar";
+import {
+  Box,
+  Typography,
+  Snackbar,
+  Alert,
+  Button,
+} from "@mui/material";
 
-  const handleChange = (event, newValue) => setTab(newValue);
+export default function UserDashboardPage() {
+  const [showAlert, setShowAlert] = useState(false);
+  const router = useRouter();
 
-  const TabPanel = ({ children, value, index }) => (
-    <div hidden={value !== index}>
-      {value === index && <Box sx={{ p: 2 }}><Typography>{children}</Typography></Box>}
-    </div>
-  );
+  useEffect(() => {
+    const profileComplete = JSON.parse(localStorage.getItem("profileComplete"));
+
+    if (profileComplete === false || profileComplete === null) {
+      setShowAlert(true);
+    }
+  }, []);
+
+  const handleCloseAlert = () => {
+    setShowAlert(false);
+  };
+
+  const goToProfile = () => {
+    router.push("/user/profile"); // replace with your actual route if different
+  };
 
   return (
-    <Layout>
-      <Tabs value={tab} onChange={handleChange} sx={{ mb: 2 }}>
-        <Tab label="Preferences" />
-        <Tab label="Saved Jobs" />
-        <Tab label="Applications" />
-        <Tab label="Settings" />
-      </Tabs>
+    <Box sx={{ display: "flex" }}>
+      {/* Sidebar on the left */}
+      <Sidebar />
 
-      <TabPanel value={tab} index={0}>Preferences details here...</TabPanel>
-      <TabPanel value={tab} index={1}>List of saved jobs...</TabPanel>
-      <TabPanel value={tab} index={2}>Applications history...</TabPanel>
-      <TabPanel value={tab} index={3}>User settings...</TabPanel>
-    </Layout>
+      {/* Main Content on the right */}
+      <Box sx={{ flexGrow: 1, px: 4, py: 3 }}>
+        {/* Alert for Incomplete Profile */}
+        <Snackbar
+          open={showAlert}
+          onClose={handleCloseAlert}
+          anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        >
+          <Alert
+            onClose={handleCloseAlert}
+            severity="warning"
+            sx={{ width: "100%" }}
+            action={
+              <Button color="inherit" size="small" onClick={goToProfile}>
+                Update Now
+              </Button>
+            }
+          >
+            Your profile is incomplete. Please update it.
+          </Alert>
+        </Snackbar>
+
+        {/* Creative Header */}
+        <CreativeUserHeader />
+
+        {/* Link-based Navigation */}
+        <Box sx={{ display: "flex", gap: 4, mt: 3 }}>
+          <Link href="/dashboard/preferences" passHref>
+            <Typography sx={{ cursor: "pointer", fontWeight: 500 }}>
+              Preferences
+            </Typography>
+          </Link>
+          <Link href="/dashboard/saved-jobs" passHref>
+            <Typography sx={{ cursor: "pointer", fontWeight: 500 }}>
+              Saved Jobs
+            </Typography>
+          </Link>
+          <Link href="/dashboard/applications" passHref>
+            <Typography sx={{ cursor: "pointer", fontWeight: 500 }}>
+              Applications
+            </Typography>
+          </Link>
+          <Link href="/dashboard/settings" passHref>
+            <Typography sx={{ cursor: "pointer", fontWeight: 500 }}>
+              Settings
+            </Typography>
+          </Link>
+        </Box>
+      </Box>
+    </Box>
   );
 }
