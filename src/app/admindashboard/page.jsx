@@ -13,6 +13,7 @@ import {
   TableHead,
   TableRow,
 } from "@mui/material";
+import { useRouter } from "next/navigation";
 
 const users = [
   {
@@ -39,6 +40,7 @@ const users = [
 ];
 
 export default function Profile() {
+  const router = useRouter();
   return (
     <div style={{ background: "#f6f8fa", minHeight: "100vh", padding: "32px" }}>
       {/* Dashboard Header */}
@@ -55,7 +57,7 @@ export default function Profile() {
 
     <Grid item>
       {/* 👉 You can replace this with your custom shadcn button too */}
-      <Button variant="contained" color="primary">
+      <Button variant="contained" color="primary" onClick={() => router.push("/test")}>
         Add test
       </Button>
     </Grid>
@@ -151,7 +153,7 @@ export default function Profile() {
               key={user.id}
               sx={{backgroundColor: index % 2 === 0 ? "#ffffff" : "#f9fafb","&:hover": { backgroundColor: "#f3f4f6" },
              }}
-      >
+        >
       <TableCell>{user.name}</TableCell>
       <TableCell>{user.email}</TableCell>
       <TableCell>{user.role}</TableCell>
