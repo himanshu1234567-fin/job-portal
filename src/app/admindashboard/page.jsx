@@ -43,13 +43,24 @@ export default function Profile() {
     <div style={{ background: "#f6f8fa", minHeight: "100vh", padding: "32px" }}>
       {/* Dashboard Header */}
       <Paper elevation={0} sx={{ mb: 4, p: 3, borderRadius: 3, background: "#fff" }}>
-        <Typography variant="h4" fontWeight={700} gutterBottom>
-          Admin Dashboard
-        </Typography>
-        <Typography variant="subtitle1" color="text.secondary">
-          Candidate Management
-        </Typography>
-      </Paper>
+  <Grid container justifyContent="space-between" alignItems="center">
+    <Grid item>
+      <Typography variant="h4" fontWeight={700}>
+        Admin Dashboard
+      </Typography>
+      <Typography variant="subtitle1" color="text.secondary">
+        Candidate Management
+      </Typography>
+    </Grid>
+
+    <Grid item>
+      {/* 👉 You can replace this with your custom shadcn button too */}
+      <Button variant="contained" color="primary">
+        Add test
+      </Button>
+    </Grid>
+  </Grid>
+</Paper>
 
       {/* Dashboard Stats */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
@@ -131,33 +142,44 @@ export default function Profile() {
                 <TableCell sx={{ color: "#374151", fontWeight: 600 }}>Email</TableCell>
                 <TableCell sx={{ color: "#374151", fontWeight: 600 }}>Role</TableCell>
                 <TableCell sx={{ color: "#374151", fontWeight: 600 }}>Status</TableCell>
+                <TableCell align="right">Action</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {users.map((user, index) => (
-                <TableRow
-                  key={user.id}
-                  sx={{
-                    backgroundColor: index % 2 === 0 ? "#ffffff" : "#f9fafb",
-                    "&:hover": { backgroundColor: "#f3f4f6" },
-                  }}
-                >
-                  <TableCell>{user.name}</TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>{user.role}</TableCell>
-                  <TableCell>
-                    <Typography
-                      sx={{
-                        color: user.status === "Active" ? "green" : "red",
-                        fontWeight: 500,
-                      }}
-                    >
-                      {user.status}
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
+             {users.map((user, index) => (
+              <TableRow
+              key={user.id}
+              sx={{backgroundColor: index % 2 === 0 ? "#ffffff" : "#f9fafb","&:hover": { backgroundColor: "#f3f4f6" },
+             }}
+      >
+      <TableCell>{user.name}</TableCell>
+      <TableCell>{user.email}</TableCell>
+      <TableCell>{user.role}</TableCell>
+      <TableCell>
+        <Typography
+          sx={{
+            color: user.status === "Active" ? "green" : "red",
+            fontWeight: 500,
+          }}
+        >
+          {user.status}
+        </Typography>
+      </TableCell>
+
+      {/* ✅ Add This */}
+      <TableCell align="right">
+        <Button
+          variant="outlined"
+          size="small"
+          onClick={() => alert(`User ID: ${user.id}\nName: ${user.name}`)}
+        >
+          View Details
+        </Button>
+      </TableCell>
+    </TableRow>
+  ))}
+</TableBody>
+
           </Table>
         </TableContainer>
       </Paper>
