@@ -17,6 +17,7 @@ import { useEffect, useRef, useState } from "react";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 
+
 const defaultProfile = {
   image: "/user.png",
   name: "",
@@ -24,8 +25,11 @@ const defaultProfile = {
   dob: "",
   phone: "",
   education: {
-    tenth: "",
-    twelfth: "",
+  tenth_board: "",
+  tenth: "",
+  twelfth_board: "",
+  twelfth: "",
+
     graduation: {
       collage_name: "",
       Graducation: "",
@@ -268,25 +272,44 @@ const Profile = () => {
             <Typography variant="h6">Education</Typography>
             {editing ? (
               <>
-                <Grid container spacing={2} mt={1}>
-                  <Grid item xs={6}>
-                    <TextField
-                      label="10th %"
-                      fullWidth
-                      name="tenth"
-                      value={user.education.tenth}
-                      onChange={handleEducationChange}
-                    />
-                  </Grid>
-                  <Grid item xs={6}>
-                    <TextField
-                      label="12th %"
-                      fullWidth
-                      name="twelfth"
-                      value={user.education.twelfth}
-                      onChange={handleEducationChange}
-                    />
-                  </Grid>
+               <Grid container spacing={2} mt={1}>
+  <Grid item xs={6}>
+    <TextField
+      label="10th Board"
+      fullWidth
+      name="tenth_board"
+      value={user.education.tenth_board}
+      onChange={handleEducationChange}
+    />
+  </Grid>
+  <Grid item xs={6}>
+    <TextField
+      label="10th %"
+      fullWidth
+      name="tenth"
+      value={user.education.tenth}
+      onChange={handleEducationChange}
+    />
+  </Grid>
+  <Grid item xs={6}>
+    <TextField
+      label="12th Board"
+      fullWidth
+      name="twelfth_board"
+      value={user.education.twelfth_board}
+      onChange={handleEducationChange}
+    />
+  </Grid>
+  <Grid item xs={6}>
+    <TextField
+      label="12th %"
+      fullWidth
+      name="twelfth"
+      value={user.education.twelfth}
+      onChange={handleEducationChange}
+    />
+  </Grid>
+
                   <Grid item xs={6}>
                     <TextField
                       label="College"
@@ -336,8 +359,13 @@ const Profile = () => {
               </>
             ) : (
               <>
-                <Typography>10th: {user.education.tenth || "Not Set"}</Typography>
-                <Typography>12th: {user.education.twelfth || "Not Set"}</Typography>
+                <Typography>
+  10th: {user.education.tenth_board || "Board"} ({user.education.tenth || "Not Set"}%)
+</Typography>
+<Typography>
+  12th: {user.education.twelfth_board || "Board"} ({user.education.twelfth || "Not Set"}%)
+</Typography>
+
                 <Typography>
                   Graduation: {user.education.graduation.Graducation || "Degree"} in{" "}
                   {user.education.graduation.branch || "Branch"} from{" "}
