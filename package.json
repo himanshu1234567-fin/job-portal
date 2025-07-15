@@ -18,7 +18,8 @@
     "axios": "^1.10.0",
     "next": "13.4.19",
     "react": "18.2.0",
-    "react-dom": "18.2.0"
+    "react-dom": "18.2.0",
+    "tailwind": "^4.0.0"
   },
   "devDependencies": {
     "@types/node": "24.0.13",
@@ -26,7 +27,11 @@
     "autoprefixer": "^10.4.21",
     "nodemon": "^3.1.10",
     "postcss": "^8.5.6",
+<<<<<<< HEAD
     "tailwindcss": "^3.4.17",
     "typescript": "5.8.3"
+=======
+    "tailwindcss": "^3.4.17"
+>>>>>>> 3b8c7721e3b23fbaf25ef497b34841d61d16fefd
   }
 }
