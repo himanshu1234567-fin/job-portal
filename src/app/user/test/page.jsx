@@ -2,114 +2,208 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  Box,
-  Button,
-  Typography,
-  Radio,
-  RadioGroup,
-  FormControlLabel,
-  FormGroup,
-  Card,
-  CardContent,
-  CircularProgress
+  Box, Button, Card, CardContent, Typography, Radio, RadioGroup, FormControlLabel,
+  Checkbox, LinearProgress, Divider
 } from '@mui/material';
-import axios from 'axios';
 
-const UserTest = () => {
+const TestPage = () => {
   const [questions, setQuestions] = useState([]);
-  const [answers, setAnswers] = useState({});
-  const [loading, setLoading] = useState(true);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [userAnswers, setUserAnswers] = useState({});
+  const [score, setScore] = useState(0);
+  const [showResult, setShowResult] = useState(false);
+  const [totalTime, setTotalTime] = useState(0);
+  const [timer, setTimer] = useState(0);
 
-  // Fetch Questions from API
   useEffect(() => {
-    const fetchQuestions = async () => {
-      try {
-        const response = await axios.get('http://localhost:5000/api/questions');
-        const data = response.data.map(q => ({
-          ...q,
-          options: q.options_json ? JSON.parse(q.options_json) : []
-        }));
-        setQuestions(data);
-      } catch (error) {
-        console.error('Error fetching questions:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    const savedQuestions = localStorage.getItem('questions');
+    if (savedQuestions) {
+      const parsedQuestions = JSON.parse(savedQuestions);
+      setQuestions(parsedQuestions);
 
-    fetchQuestions();
+      const totalDuration = parsedQuestions.reduce((sum, q) => {
+        const duration = Number(q.duration) || 60;
+        return sum + duration;
+      }, 0);
+
+      const finalDuration = totalDuration > 0 ? totalDuration : 60;
+      setTotalTime(finalDuration);
+      setTimer(finalDuration);
+    }
   }, []);
 
-  const handleAnswerChange = (questionId, selectedOption) => {
-    setAnswers(prev => ({
-      ...prev,
-      [questionId]: selectedOption
-    }));
+  useEffect(() => {
+    if (timer > 0 && !showResult) {
+      const interval = setInterval(() => {
+        setTimer(prev => prev - 1);
+      }, 1000);
+      return () => clearInterval(interval);
+    } else if (timer <= 0 && !showResult && questions.length > 0) {
+      submitTest();
+    }
+  }, [timer, showResult, questions]);
+
+  const handleAnswerChange = (optionText) => {
+    setUserAnswers({
+      ...userAnswers,
+      [questions[currentIndex]?.title]: optionText
+    });
   };
 
-  const handleSubmit = () => {
-    console.log('User Answers:', answers);
-    alert('Test submitted! Check console for responses.');
+  const handleMultipleAnswerChange = (optionText) => {
+    const currentQuestion = questions[currentIndex];
+    if (!currentQuestion) return;
+    const key = currentQuestion.title;
+
+    const previousAnswers = userAnswers[key] || [];
+    if (previousAnswers.includes(optionText)) {
+      setUserAnswers({
+        ...userAnswers,
+        [key]: previousAnswers.filter(ans => ans !== optionText)
+      });
+    } else {
+      setUserAnswers({
+        ...userAnswers,
+        [key]: [...previousAnswers, optionText]
+      });
+    }
   };
 
-  if (loading) {
+  const handleNext = () => {
+    if (currentIndex + 1 < questions.length) {
+      setCurrentIndex(prev => prev + 1);
+    } else {
+      submitTest();
+    }
+  };
+
+  const submitTest = () => {
+    let calculatedScore = 0;
+
+    questions.forEach((question) => {
+      const correctAnswers = question.options
+        ?.filter(opt => opt.isCorrect)
+        ?.map(opt => opt.text) || [];
+
+      const userAnswer = userAnswers[question.title];
+
+      if (question.allowMultipleCorrect) {
+        const correct = Array.isArray(userAnswer) &&
+          userAnswer.length === correctAnswers.length &&
+          userAnswer.every(ans => correctAnswers.includes(ans));
+        if (correct) calculatedScore += 1;
+      } else {
+        if (userAnswer === correctAnswers[0]) {
+          calculatedScore += 1;
+        }
+      }
+    });
+
+    setScore(calculatedScore);
+    setShowResult(true);
+  };
+
+  if (questions.length === 0) {
     return (
-      <Box textAlign="center" mt={5}>
-        <CircularProgress />
-        <Typography>Loading Questions...</Typography>
+      <Typography sx={{ m: 4 }} variant="h6">
+        No Questions Found. Please create some questions first.
+      </Typography>
+    );
+  }
+
+  if (showResult) {
+    return (
+      <Box sx={{ maxWidth: 600, mx: 'auto', mt: 8, textAlign: 'center' }}>
+        <Typography variant="h4" gutterBottom>Test Completed!</Typography>
+        <Typography variant="h6">Your Score: {score} / {questions.length}</Typography>
       </Box>
     );
   }
 
+  const currentQuestion = questions[currentIndex];
+
   return (
-    <Box p={3}>
-      <Typography variant="h4" gutterBottom>User Test</Typography>
+    <Box sx={{ maxWidth: 600, mx: 'auto', p: 2 }}>
+      <Box sx={{ mb: 2 }}>
+        <Typography variant="body1" fontWeight="bold" textAlign="center" color={timer <= 10 ? 'error' : 'text.primary'}>
+          Time Remaining: {timer} sec
+        </Typography>
+        <LinearProgress
+          variant="determinate"
+          value={((totalTime - timer) / totalTime) * 100}
+          sx={{ height: 10, borderRadius: 5, mt: 1 }}
+        />
+      </Box>
 
-      {questions.length === 0 ? (
-        <Typography>No questions available.</Typography>
-      ) : (
-        questions.map((question, index) => (
-          <Card key={question.id} sx={{ mb: 3 }}>
-            <CardContent>
-              <Typography variant="h6">
-                {index + 1}. {question.question_text}
-              </Typography>
+      <Card sx={{ borderRadius: 3, boxShadow: 3 }}>
+        <CardContent>
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            {currentQuestion.text}
+          </Typography>
 
-              {question.options.length > 0 ? (
-                <FormGroup>
-                  <RadioGroup
-                    value={answers[question.id] || ''}
-                    onChange={(e) => handleAnswerChange(question.id, e.target.value)}
-                  >
-                    {question.options.map((opt, optIndex) => (
-                      <FormControlLabel
-                        key={optIndex}
-                        value={opt.text}
-                        control={<Radio />}
-                        label={opt.text}
-                      />
-                    ))}
-                  </RadioGroup>
-                </FormGroup>
-              ) : (
-                <Typography color="error">No options available for this question.</Typography>
-              )}
-            </CardContent>
-          </Card>
-        ))
-      )}
+          <Divider sx={{ mb: 2 }} />
 
-      {questions.length > 0 && (
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={handleSubmit}
-        >
-          Submit Test
-        </Button>
-      )}
+          {currentQuestion.allowMultipleCorrect ? (
+            currentQuestion.options.map((option, idx) => (
+              <FormControlLabel
+                key={idx}
+                control={
+                  <Checkbox
+                    checked={(userAnswers[currentQuestion.title] || []).includes(option.text)}
+                    onChange={() => handleMultipleAnswerChange(option.text)}
+                  />
+                }
+                label={option.text}
+                sx={{ display: 'block', mb: 1 }}
+              />
+            ))
+          ) : (
+            <RadioGroup
+              value={userAnswers[currentQuestion.title] || ''}
+              onChange={(e) => handleAnswerChange(e.target.value)}
+            >
+              {currentQuestion.options.map((option, idx) => (
+                <FormControlLabel
+                  key={idx}
+                  value={option.text}
+                  control={<Radio />}
+                  label={option.text}
+                  sx={{ display: 'block', mb: 1 }}
+                />
+              ))}
+            </RadioGroup>
+          )}
+
+          <Divider sx={{ my: 2 }} />
+
+          <Button
+            variant="contained"
+            onClick={handleNext}
+            sx={{
+              float: 'right',
+              bgcolor: '#1a73e8',
+              textTransform: 'none',
+              '&:hover': { bgcolor: '#1558b0' }
+            }}
+            disabled={
+              (currentQuestion.allowMultipleCorrect
+                ? (userAnswers[currentQuestion.title] || []).length === 0
+                : !userAnswers[currentQuestion.title])
+            }
+          >
+            {currentIndex + 1 === questions.length ? 'Submit' : 'Next'}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Typography
+        variant="body2"
+        sx={{ mt: 2, textAlign: 'center', color: 'text.secondary' }}
+      >
+        Question {currentIndex + 1} of {questions.length}
+      </Typography>
     </Box>
   );
 };
 
-export default UserTest;
+export default TestPage;

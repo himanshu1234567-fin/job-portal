@@ -9,7 +9,11 @@ export default function Topbar() {
           User Dashboard
         </Typography>
         <Box sx={{ display: "flex", alignItems: "center" }}>
+<<<<<<< HEAD
           <Typography variant="body1" sx={{ mr: 2 }}>User</Typography>
+=======
+          <Typography variant="body1" sx={{ mr: 2 }}></Typography>
+>>>>>>> 5144e0a8de1c3954db6a94ee384fc0c8bd536c5a
           <Avatar src="https://i.pravatar.cc/300" />
         </Box>
       </Toolbar>

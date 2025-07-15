@@ -3,16 +3,18 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 5000",
     "build": "next build",
     "start": "next start"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
-    "@mui/icons-material": "^5.11.16",
+    "@mui/icons-material": "^5.18.0",
     "@mui/material": "^5.18.0",
     "@tabler/icons-react": "^3.34.0",
+    "@tailwindcss/postcss": "^4.1.11",
+    "autoprefixer": "^10.4.17",
     "axios": "^1.10.0",
     "next": "13.4.19",
     "react": "18.2.0",
@@ -20,9 +22,13 @@
     "tailwind": "^4.0.0"
   },
   "devDependencies": {
+    "@types/node": "24.0.13",
+    "@types/react": "19.1.8",
     "autoprefixer": "^10.4.21",
     "nodemon": "^3.1.10",
     "postcss": "^8.5.6",
-    "tailwindcss": "^3.4.17"
+    "tailwindcss": "^3.4.17",
+    "typescript": "5.8.3"
+
   }
 }

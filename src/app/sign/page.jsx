@@ -16,8 +16,8 @@ import {
 export default function Sign() {
   const [activeTab, setActiveTab] = useState('signIn');
   const [fullName, setFullName] = useState('');
-  const [signUpEmail, setSignUpEmail] = useState('');
-  const [signUpPassword, setSignUpPassword] = useState('');
+  const [email, setemail] = useState('');
+  const [password, setpassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [signInEmail, setSignInEmail] = useState('');
   const [signInPassword, setSignInPassword] = useState('');
@@ -34,18 +34,19 @@ export default function Sign() {
 
   const handleSignUp = async (e) => {
     e.preventDefault();
-    if (signUpPassword !== confirmPassword) {
+    if (password !== confirmPassword) {
       return setError('Passwords do not match');
     }
 
     try {
-      await axios.post('http://localhost:5000/api/register', {
+      await axios.post('http://localhost:3000/api/auth/register', {
         fullName,
-        email: signUpEmail,
-        password: signUpPassword,
+        email: email,
+        password: password,
+        confirmPassword: confirmPassword,
       });
 
-      localStorage.setItem('currentUser', JSON.stringify({ fullName, email: signUpEmail }));
+      localStorage.setItem('currentUser', JSON.stringify({ fullName, email: email }));
       setError('');
       router.push('/');
     } catch (err) {
@@ -54,21 +55,27 @@ export default function Sign() {
   };
 
   const handleSignIn = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
+  setError('');  // Clear previous errors
 
-    try {
-      const res = await axios.post('http://localhost:5000/api/login', {
-        email: signInEmail,
-        password: signInPassword,
-      });
+  try {
+    const res = await axios.post('http://localhost:3000/api/auth/login', {
+      email: signInEmail,
+      password: signInPassword,
+    });
 
-      localStorage.setItem('currentUser', JSON.stringify(res.data.user));
-      setError('');
-      router.push('/');
-    } catch (err) {
-      setError(err.response?.data?.error || 'Login failed');
-    }
-  };
+    // Assuming your backend returns something like { user: {...} }
+    localStorage.setItem('currentUser', JSON.stringify(res.data.user || { email: signInEmail }));
+
+    router.push('/'); // Redirect to home after login
+  } catch (err) {
+    console.log('Login Error:', err.response?.data);
+    setError(err.response?.data?.error || 'Login failed');
+  }
+};
+
+
+
 
   return (
     <Container maxWidth="sm" sx={{ py: 8, position: 'relative' }}>
@@ -126,16 +133,16 @@ export default function Sign() {
             <TextField
               label="Email"
               type="email"
-              value={signUpEmail}
-              onChange={(e) => setSignUpEmail(e.target.value)}
+              value={email}
+              onChange={(e) => setemail(e.target.value)}
               fullWidth
               required
             />
             <TextField
               label="Password"
               type="password"
-              value={signUpPassword}
-              onChange={(e) => setSignUpPassword(e.target.value)}
+              value={password}
+              onChange={(e) => setpassword(e.target.value)}
               fullWidth
               required
             />
