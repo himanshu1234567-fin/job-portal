@@ -20,7 +20,7 @@ import {
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
-import CompleteProfilePopup from '../components/PopupCard'
+import CompleteProfilePopup from '../components/PopupCard';
 
 const navigation = [
   { name: 'Product', href: '#' },
@@ -38,14 +38,18 @@ export default function ResumeBuilder() {
   useEffect(() => {
     const storedUser = localStorage.getItem('currentUser');
     const justSignedIn = localStorage.getItem('justSignedIn');
+    const popupDismissed = localStorage.getItem('profilePopupDismissed');
 
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
       setCurrentUser(parsedUser);
 
       if (justSignedIn === 'true') {
-        setShowPopup(true);
         localStorage.removeItem('justSignedIn');
+        localStorage.removeItem('profilePopupDismissed'); // reset dismissal
+        setShowPopup(true);
+      } else if (!popupDismissed) {
+        setShowPopup(true);
       }
     }
   }, []);
@@ -61,8 +65,15 @@ export default function ResumeBuilder() {
 
   const handleLogout = () => {
     localStorage.removeItem('currentUser');
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('profilePopupDismissed');
     setCurrentUser(null);
     window.location.reload();
+  };
+
+  const handleClosePopup = () => {
+    setShowPopup(false);
+    localStorage.setItem('profilePopupDismissed', 'true');
   };
 
   const drawer = (
@@ -173,13 +184,13 @@ export default function ResumeBuilder() {
                       justifyContent="center"
                     >
                       <a href="/user/profile" style={{ textDecoration: 'none', color: 'inherit' }}>
-                      <Avatar
-                        alt={currentUser.fullName}
-                        src={currentUser.photoURL || ''}
-                        sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}
-                      >
-                        {currentUser.fullName?.[0]}
-                      </Avatar>
+                        <Avatar
+                          alt={currentUser.fullName}
+                          src={currentUser.photoURL || ''}
+                          sx={{ width: 32, height: 32, bgcolor: 'secondary.main' }}
+                        >
+                          {currentUser.fullName?.[0]}
+                        </Avatar>
                       </a>
                     </Box>
                   </Box>
@@ -224,21 +235,11 @@ export default function ResumeBuilder() {
         </Typography>
         <Box mt={4} display="flex" justifyContent="center" gap={2}>
           {!currentUser ? (
-            <Button
-              href="/sign"
-              variant="contained"
-              color="primary"
-              size="large"
-            >
+            <Button href="/sign" variant="contained" color="primary" size="large">
               Get started
             </Button>
           ) : (
-            <Button
-              href="/user/test"
-              variant="contained"
-              color="success"
-              size="large"
-            >
+            <Button href="/user/test" variant="contained" color="success" size="large">
               Take Test
             </Button>
           )}
@@ -248,7 +249,7 @@ export default function ResumeBuilder() {
         </Box>
       </Container>
 
-      <CompleteProfilePopup open={showPopup} onClose={() => setShowPopup(false)} />
+      <CompleteProfilePopup open={showPopup} onClose={handleClosePopup} />
     </Box>
   );
 }

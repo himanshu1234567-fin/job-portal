@@ -18,14 +18,21 @@ const QuestionBuilder = () => {
     category: '',
     difficulty: '',
     duration: 60,
-    text: '',
+    question: '',
     options: [{ text: '', isCorrect: false }],
     points: 1
   });
 
-  const fetchSavedQuestions = () => {
-    const saved = JSON.parse(localStorage.getItem('questions')) || [];
-    setQuestions(saved);
+  const fetchSavedQuestions = async () => {
+    try {
+      const res = await fetch('http://localhost:3000/api/questions');
+      const json = await res.json();
+      const fetchedQuestions = Array.isArray(json.data) ? json.data : [];
+      setQuestions(fetchedQuestions);
+    } catch (error) {
+      console.error('Error fetching questions:', error);
+      setQuestions([]);
+    }
   };
 
   useEffect(() => {
@@ -67,14 +74,14 @@ const QuestionBuilder = () => {
   };
 
   const validateQuestion = () => {
-    const { title, text, category, difficulty, options } = currentQuestion;
-    if (!title || !text || !category || !difficulty) return false;
+    const { title, question, category, difficulty, options } = currentQuestion;
+    if (!title || !question || !category || !difficulty) return false;
     if (options.length < 1 || !options.every(opt => opt.text.trim())) return false;
     if (!options.some(opt => opt.isCorrect)) return false;
     return true;
   };
 
-  const saveQuestion = () => {
+  const saveQuestion = async () => {
     if (!validateQuestion()) {
       alert('Please fill all required fields and mark at least one correct option.');
       return;
@@ -82,37 +89,49 @@ const QuestionBuilder = () => {
 
     setSaving(true);
 
-    const savedQuestions = JSON.parse(localStorage.getItem('questions')) || [];
-    const newQuestion = { ...currentQuestion, id: Date.now() };
-    const updatedQuestions = [...savedQuestions, newQuestion];
+    try {
+      const res = await fetch('http://localhost:3000/api/questions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(currentQuestion),
+      });
 
-    localStorage.setItem('questions', JSON.stringify(updatedQuestions));
-    setQuestions(updatedQuestions);
+      if (!res.ok) throw new Error('Failed to save question');
 
-    setCurrentQuestion({
-      title: '',
-      category: '',
-      difficulty: '',
-      duration: 60,
-      text: '',
-      options: [{ text: '', isCorrect: false }],
-      points: 1
-    });
+      await fetchSavedQuestions();
+      setCurrentQuestion({
+        title: '',
+        category: '',
+        difficulty: '',
+        duration: 60,
+        question: '',
+        options: [{ text: '', isCorrect: false }],
+        points: 1
+      });
 
-    alert('Question saved to local test!');
-    setSaving(false);
+      alert('Question saved successfully!');
+    } catch (err) {
+      console.error(err);
+      alert('Failed to save question.');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const deleteQuestion = (id) => {
-    const savedQuestions = JSON.parse(localStorage.getItem('questions')) || [];
-    const updatedQuestions = savedQuestions.filter(q => q.id !== id);
-    localStorage.setItem('questions', JSON.stringify(updatedQuestions));
-    setQuestions(updatedQuestions);
+  const deleteQuestion = async (_id) => {
+    try {
+      const res = await fetch(`http://localhost:3000/api/questions/${_id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete');
+      await fetchSavedQuestions();
+    } catch (error) {
+      console.error('Error deleting question:', error);
+    }
   };
 
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h5" gutterBottom>Add New Question to Test</Typography>
+      {/* Form Section */}
       <Card>
         <CardContent>
           <TextField
@@ -178,10 +197,11 @@ const QuestionBuilder = () => {
             valueLabelDisplay="auto"
             sx={{ mt: 1, mb: 3 }}
           />
+
           <TextField
             label="Question"
-            value={currentQuestion.text}
-            onChange={(e) => handleFieldChange('text', e.target.value)}
+            value={currentQuestion.question}
+            onChange={(e) => handleFieldChange('question', e.target.value)}
             fullWidth
             multiline
             margin="normal"
@@ -254,8 +274,8 @@ const QuestionBuilder = () => {
         </CardContent>
       </Card>
 
+      {/* Current Saved Questions Section */}
       <Divider sx={{ my: 4 }} />
-
       <Typography variant="h5" gutterBottom>Current Saved Test</Typography>
 
       {questions.length === 0 ? (
@@ -264,9 +284,9 @@ const QuestionBuilder = () => {
         <Card>
           <CardContent>
             {questions.map((q, idx) => (
-              <Box key={q.id || idx} sx={{ mb: 2, position: 'relative' }}>
+              <Box key={q._id} sx={{ mb: 2, position: 'relative' }}>
                 <IconButton
-                  onClick={() => deleteQuestion(q.id)}
+                  onClick={() => deleteQuestion(q._id)}
                   size="small"
                   sx={{ position: 'absolute', right: 0, top: 0 }}
                 >
@@ -276,7 +296,7 @@ const QuestionBuilder = () => {
                 <Typography variant="subtitle1">
                   {idx + 1}. {q.title} ({q.category || 'No Category'}) [{q.difficulty || 'Unknown'}]
                 </Typography>
-                <Typography variant="body2">{q.text}</Typography>
+                <Typography variant="body2">{q.question}</Typography>
                 <Typography variant="caption">
                   {q.options.map((opt, i) => (
                     <span key={i}>
