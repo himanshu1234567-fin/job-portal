@@ -1,36 +1,38 @@
 'use client';
-import { useState, useEffect } from 'react';
-import axios from 'axios';
-import { useRouter } from 'next/navigation';
+
+import { useState } from 'react';
 import {
   Box,
-  Button,
   Container,
+  Typography,
   TextField,
-  Paper,
+  Button,
   Tabs,
   Tab,
   Alert,
 } from '@mui/material';
+import axios from 'axios';
+import { useRouter } from 'next/navigation';
 
-export default function Sign() {
-  const [activeTab, setActiveTab] = useState('signIn');
-  const [fullName, setFullName] = useState('');
-  const [email, setemail] = useState('');
-  const [password, setpassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [signInEmail, setSignInEmail] = useState('');
-  const [signInPassword, setSignInPassword] = useState('');
+export default function SignPage() {
+  const [tab, setTab] = useState(0);
   const [error, setError] = useState('');
-
   const router = useRouter();
 
-  useEffect(() => {
-    const storedUser = localStorage.getItem('currentUser');
-    if (storedUser) {
-      router.push('/');
-    }
-  }, [router]);
+  // Sign Up state
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Sign In state
+  const [signInEmail, setSignInEmail] = useState('');
+  const [signInPassword, setSignInPassword] = useState('');
+
+  const handleTabChange = (event, newValue) => {
+    setTab(newValue);
+    setError('');
+  };
 
   const handleSignUp = async (e) => {
     e.preventDefault();
@@ -39,14 +41,20 @@ export default function Sign() {
     }
 
     try {
-      await axios.post('http://localhost:3000/api/auth/register', {
+      const res = await axios.post('http://localhost:3000/api/auth/register', {
         fullName,
-        email: email,
-        password: password,
-        confirmPassword: confirmPassword,
+        email,
+        password,
+        confirmPassword,
       });
 
-      localStorage.setItem('currentUser', JSON.stringify({ fullName, email: email }));
+      const { user, token } = res.data;
+
+      // Save to localStorage
+      localStorage.setItem('currentUser', JSON.stringify(user));
+      localStorage.setItem('authToken', token);
+      localStorage.setItem('justSignedIn', 'true');
+
       setError('');
       router.push('/');
     } catch (err) {
@@ -55,111 +63,111 @@ export default function Sign() {
   };
 
   const handleSignIn = async (e) => {
-  e.preventDefault();
-  setError('');  // Clear previous errors
+    e.preventDefault();
+    setError('');
 
-  try {
-    const res = await axios.post('http://localhost:3000/api/auth/login', {
-      email: signInEmail,
-      password: signInPassword,
-    });
+    try {
+      const res = await axios.post('http://localhost:3000/api/auth/login', {
+        email: signInEmail,
+        password: signInPassword,
+      });
 
-    // Assuming your backend returns something like { user: {...} }
-    localStorage.setItem('currentUser', JSON.stringify(res.data.user || { email: signInEmail }));
+      const { user, token } = res.data;
 
-    router.push('/'); // Redirect to home after login
-  } catch (err) {
-    console.log('Login Error:', err.response?.data);
-    setError(err.response?.data?.error || 'Login failed');
-  }
-};
+      // Save to localStorage
+      localStorage.setItem('currentUser', JSON.stringify(user));
+      localStorage.setItem('authToken', token);
+      localStorage.setItem('justSignedIn', 'true');
 
-
-
+      router.push('/');
+    } catch (err) {
+      console.log('Login Error:', err.response?.data);
+      setError(err.response?.data?.error || 'Login failed');
+    }
+  };
 
   return (
-    <Container maxWidth="sm" sx={{ py: 8, position: 'relative' }}>
-      <Paper elevation={3} sx={{ p: 4, borderRadius: 3 }}>
-        <Tabs
-          value={activeTab}
-          onChange={(e, newValue) => setActiveTab(newValue)}
-          indicatorColor="primary"
-          textColor="primary"
-          variant="fullWidth"
-        >
-          <Tab label="Sign In" value="signIn" />
-          <Tab label="Sign Up" value="signUp" />
+    <Container maxWidth="sm" sx={{ mt: 6 }}>
+      <Box sx={{ textAlign: 'center', mb: 4 }}>
+        <Typography variant="h4" gutterBottom>
+          {tab === 0 ? 'Sign In' : 'Sign Up'}
+        </Typography>
+        <Tabs value={tab} onChange={handleTabChange} centered>
+          <Tab label="Sign In" />
+          <Tab label="Sign Up" />
         </Tabs>
+      </Box>
 
-        {error && (
-          <Alert severity="error" sx={{ mt: 2 }}>
-            {error}
-          </Alert>
-        )}
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-        {activeTab === 'signIn' && (
-          <Box component="form" onSubmit={handleSignIn} sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <TextField
-              label="Email"
-              type="email"
-              value={signInEmail}
-              onChange={(e) => setSignInEmail(e.target.value)}
-              fullWidth
-              required
-            />
-            <TextField
-              label="Password"
-              type="password"
-              value={signInPassword}
-              onChange={(e) => setSignInPassword(e.target.value)}
-              fullWidth
-              required
-            />
-            <Button variant="contained" type="submit" fullWidth>
-              Sign In
-            </Button>
-          </Box>
-        )}
-
-        {activeTab === 'signUp' && (
-          <Box component="form" onSubmit={handleSignUp} sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <TextField
-              label="Full Name"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              fullWidth
-              required
-            />
-            <TextField
-              label="Email"
-              type="email"
-              value={email}
-              onChange={(e) => setemail(e.target.value)}
-              fullWidth
-              required
-            />
-            <TextField
-              label="Password"
-              type="password"
-              value={password}
-              onChange={(e) => setpassword(e.target.value)}
-              fullWidth
-              required
-            />
-            <TextField
-              label="Confirm Password"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              fullWidth
-              required
-            />
-            <Button variant="contained" type="submit" fullWidth>
-              Sign Up
-            </Button>
-          </Box>
-        )}
-      </Paper>
+      {tab === 0 ? (
+        // Sign In Form
+        <Box component="form" onSubmit={handleSignIn} noValidate sx={{ mt: 1 }}>
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            label="Email Address"
+            type="email"
+            value={signInEmail}
+            onChange={(e) => setSignInEmail(e.target.value)}
+          />
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            label="Password"
+            type="password"
+            value={signInPassword}
+            onChange={(e) => setSignInPassword(e.target.value)}
+          />
+          <Button type="submit" fullWidth variant="contained" color="primary" sx={{ mt: 3 }}>
+            Sign In
+          </Button>
+        </Box>
+      ) : (
+        // Sign Up Form
+        <Box component="form" onSubmit={handleSignUp} noValidate sx={{ mt: 1 }}>
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            label="Full Name"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+          />
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            label="Email Address"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            label="Password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <TextField
+            margin="normal"
+            required
+            fullWidth
+            label="Confirm Password"
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+          />
+          <Button type="submit" fullWidth variant="contained" color="primary" sx={{ mt: 3 }}>
+            Sign Up
+          </Button>
+        </Box>
+      )}
     </Container>
   );
 }
