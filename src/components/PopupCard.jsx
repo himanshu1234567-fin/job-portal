@@ -15,7 +15,7 @@ export default function CompleteProfilePopup({ open, onClose }) {
         <Button onClick={onClose} color="primary">
           Close
         </Button>
-        <Button href="/profile" variant="contained" color="primary">
+        <Button href="/user/profile" variant="contained" color="primary">
           Go to Profile
         </Button>
       </DialogActions>
