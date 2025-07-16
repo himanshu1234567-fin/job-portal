@@ -11,6 +11,7 @@ import { Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
 const QuestionBuilder = () => {
   const [questions, setQuestions] = useState([]);
   const [allowMultipleCorrect, setAllowMultipleCorrect] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const [currentQuestion, setCurrentQuestion] = useState({
     title: '',
@@ -22,15 +23,9 @@ const QuestionBuilder = () => {
     points: 1
   });
 
-  // Fetch questions from API
-  const fetchSavedQuestions = async () => {
-    try {
-      const response = await fetch('http://localhost:3000/api/questions');
-      const data = await response.json();
-      setQuestions(data);
-    } catch (error) {
-      console.error('Error fetching questions:', error);
-    }
+  const fetchSavedQuestions = () => {
+    const saved = JSON.parse(localStorage.getItem('questions')) || [];
+    setQuestions(saved);
   };
 
   useEffect(() => {
@@ -71,50 +66,48 @@ const QuestionBuilder = () => {
     setCurrentQuestion({ ...currentQuestion, options: newOptions });
   };
 
-  // Save new question via API
-  const saveQuestion = async () => {
-    try {
-      const response = await fetch('http://localhost:3000/api/test', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(currentQuestion)
-      });
-
-      if (response.ok) {
-        fetchSavedQuestions();
-        setCurrentQuestion({
-          title: '',
-          category: '',
-          difficulty: '',
-          duration: 60,
-          text: '',
-          options: [{ text: '', isCorrect: false }],
-          points: 1
-        });
-        alert('Question saved to test!');
-      } else {
-        alert('Failed to save question.');
-      }
-    } catch (error) {
-      console.error('Error saving question:', error);
-    }
+  const validateQuestion = () => {
+    const { title, text, category, difficulty, options } = currentQuestion;
+    if (!title || !text || !category || !difficulty) return false;
+    if (options.length < 1 || !options.every(opt => opt.text.trim())) return false;
+    if (!options.some(opt => opt.isCorrect)) return false;
+    return true;
   };
 
-  // Delete question via API
-  const deleteQuestion = async (id) => {
-    try {
-      const response = await fetch(`http://localhost:3000/api/test/${id}`, {
-        method: 'DELETE'
-      });
-
-      if (response.ok) {
-        fetchSavedQuestions();
-      } else {
-        alert('Failed to delete question.');
-      }
-    } catch (error) {
-      console.error('Error deleting question:', error);
+  const saveQuestion = () => {
+    if (!validateQuestion()) {
+      alert('Please fill all required fields and mark at least one correct option.');
+      return;
     }
+
+    setSaving(true);
+
+    const savedQuestions = JSON.parse(localStorage.getItem('questions')) || [];
+    const newQuestion = { ...currentQuestion, id: Date.now() };
+    const updatedQuestions = [...savedQuestions, newQuestion];
+
+    localStorage.setItem('questions', JSON.stringify(updatedQuestions));
+    setQuestions(updatedQuestions);
+
+    setCurrentQuestion({
+      title: '',
+      category: '',
+      difficulty: '',
+      duration: 60,
+      text: '',
+      options: [{ text: '', isCorrect: false }],
+      points: 1
+    });
+
+    alert('Question saved to local test!');
+    setSaving(false);
+  };
+
+  const deleteQuestion = (id) => {
+    const savedQuestions = JSON.parse(localStorage.getItem('questions')) || [];
+    const updatedQuestions = savedQuestions.filter(q => q.id !== id);
+    localStorage.setItem('questions', JSON.stringify(updatedQuestions));
+    setQuestions(updatedQuestions);
   };
 
   return (
@@ -122,7 +115,6 @@ const QuestionBuilder = () => {
       <Typography variant="h5" gutterBottom>Add New Question to Test</Typography>
       <Card>
         <CardContent>
-
           <TextField
             label="Title"
             value={currentQuestion.title}
@@ -132,30 +124,13 @@ const QuestionBuilder = () => {
             required
           />
 
-          <TextField
-            label="Question Text"
-            value={currentQuestion.text}
-            onChange={(e) => handleFieldChange('text', e.target.value)}
-            fullWidth
-            multiline
-            margin="normal"
-            required
-          />
-
           <FormControl fullWidth margin="normal" required>
             <InputLabel>Category</InputLabel>
             <Select
-              value={
-                ['IT', 'BDE', 'Frontend', 'Backend'].includes(currentQuestion.category)
-                  ? currentQuestion.category
-                  : 'Other'
-              }
+              value={currentQuestion.category || 'Other'}
               onChange={(e) => {
-                if (e.target.value === 'Other') {
-                  handleFieldChange('category', '');
-                } else {
-                  handleFieldChange('category', e.target.value);
-                }
+                const val = e.target.value;
+                handleFieldChange('category', val === 'Other' ? '' : val);
               }}
               label="Category"
             >
@@ -196,12 +171,21 @@ const QuestionBuilder = () => {
           </Typography>
           <Slider
             value={currentQuestion.duration}
-            onChange={(e, val) => handleFieldChange('duration', val)}
+            onChange={(e, val) => handleFieldChange('duration', Number(val))}
             min={10}
             max={600}
             step={10}
             valueLabelDisplay="auto"
             sx={{ mt: 1, mb: 3 }}
+          />
+          <TextField
+            label="Question"
+            value={currentQuestion.text}
+            onChange={(e) => handleFieldChange('text', e.target.value)}
+            fullWidth
+            multiline
+            margin="normal"
+            required
           />
 
           <FormControlLabel
@@ -238,7 +222,7 @@ const QuestionBuilder = () => {
                 value={option.text}
                 onChange={(e) => handleOptionChange(index, e)}
                 fullWidth
-                placeholder={`Option ${index + 1}`}
+                placeholder={`Option ${String.fromCharCode(65 + index)}`}
               />
 
               {currentQuestion.options.length > 1 && (
@@ -263,8 +247,9 @@ const QuestionBuilder = () => {
             color="primary"
             onClick={saveQuestion}
             sx={{ mt: 3, float: 'right' }}
+            disabled={saving}
           >
-            Save Question
+            {saving ? 'Saving...' : 'Save Question'}
           </Button>
         </CardContent>
       </Card>

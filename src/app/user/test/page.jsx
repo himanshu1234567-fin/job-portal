@@ -106,7 +106,6 @@ const TestPage = () => {
   if (questions.length === 0) {
     return (
       <Typography sx={{ m: 4 }} variant="h6">
-        No Questions Found. Please create some questions first.
       </Typography>
     );
   }
