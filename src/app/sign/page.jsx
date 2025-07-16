@@ -50,7 +50,6 @@ export default function SignPage() {
 
       const { user, token } = res.data;
 
-      // Save to localStorage
       localStorage.setItem('currentUser', JSON.stringify(user));
       localStorage.setItem('authToken', token);
       localStorage.setItem('justSignedIn', 'true');
