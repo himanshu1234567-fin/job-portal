@@ -84,17 +84,21 @@ const Profile = () => {
     return Math.round((filled / fields.length) * 100);
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
+const handleChange = (e) => {
+  const { name, value } = e.target;
 
-    // Email must end with @gmail.com
-    if (name === "email" && value && !value.endsWith("@gmail.com")) return;
-
-    // Phone must be 10 digit number only
-    if (name === "phone" && value && !/^\d{0,10}$/.test(value)) return;
-
+  // Live validation but still allow user to type
+  if (name === "email") {
     setUser((prev) => ({ ...prev, [name]: value }));
-  };
+    return;
+  }
+
+  if (name === "phone") {
+    if (!/^\d{0,10}$/.test(value)) return; // Only allow up to 10 digits
+  }
+
+  setUser((prev) => ({ ...prev, [name]: value }));
+};
 
   const handleEducationChange = (e) => {
     const { name, value } = e.target;
@@ -517,6 +521,7 @@ const removeResume = () => {
                 if (editing) {
                   const progress = calculateCompletion();
                   localStorage.setItem("profileComplete", JSON.stringify(progress === 100));
+                  localStorage.setItem("profileProgress", JSON.stringify(progress));
                   setEditing(false);
                 } else {
                   setEditing(true);
