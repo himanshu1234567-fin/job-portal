@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Box,
@@ -18,20 +18,24 @@ import EditIcon from "@mui/icons-material/Edit";
 
 export default function CreativeUserHeader() {
   const [anchorEl, setAnchorEl] = useState(null);
+  const [profileProgress, setProfileProgress] = useState(0);
   const open = Boolean(anchorEl);
 
   const user = {
     name: "Sonalika Rathore",
     email: "sonalirathore262@gmail.com",
-    profileCompletion: 72,
   };
 
   const handleClick = (event) => setAnchorEl(event.currentTarget);
   const handleClose = () => setAnchorEl(null);
 
+  useEffect(() => {
+    const progress = JSON.parse(localStorage.getItem("profileProgress")) || 0;
+    setProfileProgress(progress);
+  }, []);
+
   return (
     <Box>
-      {/* Stylish Header */}
       <Box
         sx={{
           background: "linear-gradient(90deg, #4facfe 0%, #00f2fe 100%)",
@@ -50,7 +54,7 @@ export default function CreativeUserHeader() {
             Welcome back, {user.name} 👋
           </Typography>
           <Typography variant="body1" mt={1}>
-            You are just {100 - user.profileCompletion}% away from profile completion.
+            You are just {100 - profileProgress}% away from profile completion.
           </Typography>
         </Box>
 
@@ -72,17 +76,23 @@ export default function CreativeUserHeader() {
             </Typography>
             <LinearProgress
               variant="determinate"
-              value={user.profileCompletion}
-              sx={{ width: 180, height: 8, borderRadius: 5, mt: 0.5, backgroundColor: "#90caf9" }}
+              value={profileProgress}
+              sx={{
+                width: 180,
+                height: 8,
+                borderRadius: 5,
+                mt: 0.5,
+                backgroundColor: "#90caf9",
+              }}
+              color={profileProgress === 100 ? "success" : "primary"}
             />
             <Typography variant="caption" fontWeight="bold" sx={{ color: "#fff" }}>
-              {user.profileCompletion}%
+              {profileProgress}%
             </Typography>
           </Box>
         </Box>
       </Box>
 
-      {/* Avatar Menu */}
       <Menu
         anchorEl={anchorEl}
         open={open}
@@ -109,8 +119,9 @@ export default function CreativeUserHeader() {
           </Typography>
           <LinearProgress
             variant="determinate"
-            value={user.profileCompletion}
+            value={profileProgress}
             sx={{ height: 8, borderRadius: 4 }}
+            color={profileProgress === 100 ? "success" : "primary"}
           />
           <Typography
             variant="body2"
@@ -119,7 +130,7 @@ export default function CreativeUserHeader() {
             fontWeight="bold"
             textAlign="right"
           >
-            {user.profileCompletion}%
+            {profileProgress}%
           </Typography>
         </Box>
 
