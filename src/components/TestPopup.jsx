@@ -2,13 +2,14 @@
 
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography } from '@mui/material';
 
-export default function CompleteProfilePopup({ open, onClose }) {
+export default function TestPopup({ open, onClose }) {
   return (
     <Dialog open={open} onClose={onClose}>
       <DialogTitle>Congratulations!</DialogTitle>
       <DialogContent>
         <Typography variant="body1">
-            To get better job matches, Test yourself.
+            To get better job matches, Test yourself.<br />
+            If you perform test your resume will be more attractive to employers.
         </Typography>
       </DialogContent>
       <DialogActions>
