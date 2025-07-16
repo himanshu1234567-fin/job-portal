@@ -172,6 +172,7 @@ export default function ResumeBuilder() {
                       alignItems="center"
                       justifyContent="center"
                     >
+                      <a href="/user/profile" style={{ textDecoration: 'none', color: 'inherit' }}>
                       <Avatar
                         alt={currentUser.fullName}
                         src={currentUser.photoURL || ''}
@@ -179,6 +180,7 @@ export default function ResumeBuilder() {
                       >
                         {currentUser.fullName?.[0]}
                       </Avatar>
+                      </a>
                     </Box>
                   </Box>
                 </Tooltip>
