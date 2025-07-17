@@ -228,6 +228,7 @@ const removeResume = () => {
               </>
             )}
           </Grid>
+          
 
           {/* Name & Email */}
           <Grid item xs={12} sm={9}>
@@ -251,6 +252,7 @@ const removeResume = () => {
                   onChange={handleChange}
                   required
                 />
+                
               </>
             ) : (
               <>
@@ -258,7 +260,27 @@ const removeResume = () => {
                 <Typography color="text.secondary">{user.email || "No Email"}</Typography>
               </>
             )}
+               {/* Edit/Save Button */}
+          <Grid item xs={12} textAlign="right">
+            <Button
+              variant="contained"
+              color={editing ? "success" : "primary"}
+              onClick={() => {
+                if (editing) {
+                  const progress = calculateCompletion();
+                  localStorage.setItem("profileComplete", JSON.stringify(progress === 100));
+                  localStorage.setItem("profileProgress", JSON.stringify(progress));
+                  setEditing(false);
+                } else {
+                  setEditing(true);
+                }
+              }}
+            >
+              {editing ? "Save" : "Edit Profile"}
+            </Button>
           </Grid>
+          </Grid>
+          
 
           {/* Progress */}
           <Grid item xs={12}>
@@ -510,9 +532,7 @@ const removeResume = () => {
     )}
   </Paper>
 </Grid>
-
-
-          {/* Edit/Save Button */}
+   {/* Edit/Save Button */}
           <Grid item xs={12} textAlign="right">
             <Button
               variant="contained"

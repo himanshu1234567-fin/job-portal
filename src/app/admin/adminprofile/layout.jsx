@@ -1,5 +1,4 @@
 'use client';
-import Topbar from "@/components/Topbar";
 
 export const metadata = {
   title: 'My Job Portal',

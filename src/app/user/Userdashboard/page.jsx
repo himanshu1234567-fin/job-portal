@@ -14,15 +14,11 @@ import {
   ToggleButtonGroup,
   ToggleButton,
   Paper,
-  Collapse,
 } from "@mui/material";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 
 export default function UserDashboardPage() {
   const [showAlert, setShowAlert] = useState(false);
   const [difficulty, setDifficulty] = useState("");
-  const [dropdownOpen, setDropdownOpen] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -31,7 +27,9 @@ export default function UserDashboardPage() {
   }, []);
 
   const handleStartTest = () => {
-    if (difficulty) router.push(`/user/mock-test?level=${difficulty}`);
+    if (difficulty) {
+      router.push(`/user/test?level=${difficulty}`);
+    }
   };
 
   const pricingPlans = [
@@ -39,10 +37,7 @@ export default function UserDashboardPage() {
       title: "Personal Plan",
       subtitle: "For you",
       price: "₹500 per month",
-      features: [
-        "Access to 26,000+ top courses",
-        "Certification prep",
-      ],
+      features: ["Access to 26,000+ top courses", "Certification prep"],
       buttonText: "Start subscription",
     },
     {
@@ -101,18 +96,8 @@ export default function UserDashboardPage() {
 
         <CreativeUserHeader />
 
-        {/* Top Section: Mock Test + Pricing Dropdown */}
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            gap: 3,
-            mt: 5,
-            flexWrap: "nowrap",
-            alignItems: "flex-start",
-          }}
-        >
-          {/* Mock Test */}
+        {/* Top Section - Mock Test */}
+        <Box sx={{ mt: 5 }}>
           <Paper sx={{ width: "50%", p: 3, borderRadius: 3, background: "#f1f6fb" }}>
             <Typography variant="h6" fontWeight={600} textAlign="center" mb={2}>
               Mock Test 🎯
@@ -140,76 +125,59 @@ export default function UserDashboardPage() {
               </Box>
             )}
           </Paper>
+        </Box>
 
-          {/* Pricing Plans Dropdown */}
-          <Box sx={{ width: "60%", display: "flex", flexDirection: "column", gap: 2 }}>
-            <Typography variant="h6" fontWeight={600} textAlign="center">
-              Choose a plan for success
-            </Typography>
+        {/* Choose a Plan for Success - Blog Style */}
+        <Box sx={{ mt: 6 }}>
+          <Typography variant="h5" fontWeight={700} gutterBottom>
+            Choose a Plan for Success 💼
+          </Typography>
+          <Typography variant="body2" color="text.secondary" mb={3}>
+            Flexible pricing for individuals, teams, and enterprises.
+          </Typography>
 
-            <Paper sx={{ p: 2, borderRadius: 2, backgroundColor: "#fafafa" }}>
-              <Typography variant="subtitle1" fontWeight={700}>
-                {pricingPlans[0].title}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {pricingPlans[0].subtitle}
-              </Typography>
-              <Typography variant="h6" mt={1}>
-                {pricingPlans[0].price}
-              </Typography>
-              <ul style={{ paddingLeft: "20px", marginTop: "10px" }}>
-                {pricingPlans[0].features.map((feat, i) => (
-                  <li key={i}>
-                    <Typography variant="body2">{feat}</Typography>
-                  </li>
-                ))}
-              </ul>
-              <Box mt={2}>
-                <Button variant="contained" fullWidth>
-                  {pricingPlans[0].buttonText}
+          <Box sx={{ display: "flex", gap: 3, overflowX: "auto", pb: 1 }}>
+            {pricingPlans.map((plan, index) => (
+              <Paper
+                key={index}
+                sx={{
+                  minWidth: 280,
+                  p: 3,
+                  borderRadius: 3,
+                  background: "#fafafa",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                }}
+              >
+                <Typography variant="h6" fontWeight={600}>
+                  {plan.title}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  {plan.subtitle}
+                </Typography>
+                <Typography variant="h6" sx={{ mb: 1 }}>
+                  {plan.price}
+                </Typography>
+                <ul style={{ paddingLeft: "20px", marginTop: "5px", marginBottom: "10px" }}>
+                  {plan.features.slice(0, 4).map((feat, i) => (
+                    <li key={i}>
+                      <Typography variant="body2">{feat}</Typography>
+                    </li>
+                  ))}
+                  {plan.features.length > 4 && (
+                    <li>
+                      <Typography variant="body2" color="text.secondary">
+                        +{plan.features.length - 4} more...
+                      </Typography>
+                    </li>
+                  )}
+                </ul>
+                <Button variant="contained" size="small">
+                  {plan.buttonText}
                 </Button>
-              </Box>
-
-              <Box mt={1} textAlign="center">
-                <Button
-                  onClick={() => setDropdownOpen(!dropdownOpen)}
-                  endIcon={dropdownOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                >
-                  {dropdownOpen ? "Hide other plans" : "Show other plans"}
-                </Button>
-              </Box>
-
-              <Collapse in={dropdownOpen}>
-                {pricingPlans.slice(1).map((plan, idx) => (
-                  <Paper
-                    key={idx}
-                    sx={{ mt: 2, p: 2, borderRadius: 2, backgroundColor: "#f0f0f0" }}
-                  >
-                    <Typography variant="subtitle1" fontWeight={700}>
-                      {plan.title}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {plan.subtitle}
-                    </Typography>
-                    <Typography variant="h6" mt={1}>
-                      {plan.price}
-                    </Typography>
-                    <ul style={{ paddingLeft: "20px", marginTop: "10px" }}>
-                      {plan.features.map((feat, i) => (
-                        <li key={i}>
-                          <Typography variant="body2">{feat}</Typography>
-                        </li>
-                      ))}
-                    </ul>
-                    <Box mt={2}>
-                      <Button variant="contained" fullWidth>
-                        {plan.buttonText}
-                      </Button>
-                    </Box>
-                  </Paper>
-                ))}
-              </Collapse>
-            </Paper>
+              </Paper>
+            ))}
           </Box>
         </Box>
 
