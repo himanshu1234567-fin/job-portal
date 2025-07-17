@@ -14,9 +14,13 @@ import {
   ListItem,
   ListItemText,
   Divider,
+  Avatar,
+  Tooltip,
+  CircularProgress,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
+import CompleteProfilePopup from '../components/PopupCard';
 
 const navigation = [
   { name: 'Product', href: '#' },
@@ -28,20 +32,48 @@ const navigation = [
 export default function ResumeBuilder() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [progress, setProgress] = useState(0);
+  const [showPopup, setShowPopup] = useState(false);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('currentUser');
+    const justSignedIn = localStorage.getItem('justSignedIn');
+    const popupDismissed = localStorage.getItem('profilePopupDismissed');
+
     if (storedUser) {
-      setCurrentUser(JSON.parse(storedUser));
+      const parsedUser = JSON.parse(storedUser);
+      setCurrentUser(parsedUser);
+
+      if (justSignedIn === 'true') {
+        localStorage.removeItem('justSignedIn');
+        localStorage.removeItem('profilePopupDismissed'); // reset dismissal
+        setShowPopup(true);
+      } else if (!popupDismissed) {
+        setShowPopup(true);
+      }
     }
+  }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setProgress((prev) => (prev >= 100 ? 0 : prev + 10));
+    }, 800);
+    return () => clearInterval(timer);
   }, []);
 
   const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
 
   const handleLogout = () => {
     localStorage.removeItem('currentUser');
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('profilePopupDismissed');
     setCurrentUser(null);
     window.location.reload();
+  };
+
+  const handleClosePopup = () => {
+    setShowPopup(false);
+    localStorage.setItem('profilePopupDismissed', 'true');
   };
 
   const drawer = (
@@ -67,7 +99,34 @@ export default function ResumeBuilder() {
         {currentUser ? (
           <>
             <ListItem>
-              <ListItemText primary={`Welcome, ${currentUser.fullName}`} />
+              <Box position="relative" display="inline-flex" marginRight={2}>
+                <CircularProgress
+                  variant="determinate"
+                  value={progress}
+                  size={44}
+                  thickness={4}
+                  sx={{ color: 'primary.main' }}
+                />
+                <Box
+                  top={0}
+                  left={0}
+                  bottom={0}
+                  right={0}
+                  position="absolute"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                >
+                  <Avatar
+                    alt={currentUser.fullName}
+                    src={currentUser.photoURL || ''}
+                    sx={{ width: 36, height: 36, bgcolor: 'primary.main' }}
+                  >
+                    {currentUser.fullName?.[0]}
+                  </Avatar>
+                </Box>
+              </Box>
+              <ListItemText primary={currentUser.fullName} />
             </ListItem>
             <ListItem button onClick={handleLogout}>
               <ListItemText primary="Logout" />
@@ -90,14 +149,14 @@ export default function ResumeBuilder() {
             <a href="/">
               <img
                 alt="Logo"
-                src="https://img.freepik.com/free-vector/colorful-bird-illustration-gradient_343694-1741.jpg?t=st=1752471682~exp=1752475282~hmac=17062921b52414c79b52ba8254b417ef2c1b4237363dceba21467b0a0b779154&w=1380"
+                src="https://img.freepik.com/free-vector/colorful-bird-illustration-gradient_343694-1741.jpg"
                 height={40}
-                className='w-16'
+                className="w-16"
               />
             </a>
           </Box>
 
-          <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 3 }}>
+          <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 3, alignItems: 'center' }}>
             {navigation.map((item) => (
               <Button key={item.name} href={item.href} color="inherit">
                 {item.name}
@@ -105,9 +164,37 @@ export default function ResumeBuilder() {
             ))}
             {currentUser ? (
               <>
-                <Typography variant="body2" color="textPrimary">
-                  Welcome, {currentUser.fullName}
-                </Typography>
+                <Tooltip title={`${currentUser.fullName} (${progress}%)`}>
+                  <Box position="relative" display="inline-flex">
+                    <CircularProgress
+                      variant="determinate"
+                      value={progress}
+                      size={40}
+                      thickness={4}
+                      sx={{ color: 'primary.main' }}
+                    />
+                    <Box
+                      top={0}
+                      left={0}
+                      bottom={0}
+                      right={0}
+                      position="absolute"
+                      display="flex"
+                      alignItems="center"
+                      justifyContent="center"
+                    >
+                      <a href="/user/profile" style={{ textDecoration: 'none', color: 'inherit' }}>
+                        <Avatar
+                          alt={currentUser.fullName}
+                          src={currentUser.photoURL || ''}
+                          sx={{ width: 32, height: 32, bgcolor: 'secondary.main' }}
+                        >
+                          {currentUser.fullName?.[0]}
+                        </Avatar>
+                      </a>
+                    </Box>
+                  </Box>
+                </Tooltip>
                 <Button color="error" onClick={handleLogout}>
                   Logout
                 </Button>
@@ -148,21 +235,11 @@ export default function ResumeBuilder() {
         </Typography>
         <Box mt={4} display="flex" justifyContent="center" gap={2}>
           {!currentUser ? (
-            <Button
-              href="/sign"
-              variant="contained"
-              color="primary"
-              size="large"
-            >
+            <Button href="/sign" variant="contained" color="primary" size="large">
               Get started
             </Button>
           ) : (
-            <Button
-              href="/user/test"
-              variant="contained"
-              color="success"
-              size="large"
-            >
+            <Button href="/user/test" variant="contained" color="success" size="large">
               Take Test
             </Button>
           )}
@@ -171,6 +248,8 @@ export default function ResumeBuilder() {
           </Button>
         </Box>
       </Container>
+
+      <CompleteProfilePopup open={showPopup} onClose={handleClosePopup} />
     </Box>
   );
 }

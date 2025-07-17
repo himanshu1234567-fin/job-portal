@@ -13,12 +13,24 @@ import {
   DialogTitle,
   Grid,
   Typography,
+  IconButton,
 } from '@mui/material';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import axios from 'axios';
 
 const templates = [
-  { id: 'modern', name: 'Modern', preview: '/preview-modern.png' },
-  { id: 'classic', name: 'Classic', preview: '/preview-classic.png' },
+  {
+    id: 'modern',
+    name: 'Modern',
+    description: 'Clean, sleek, and modern layout suited for tech roles.',
+    preview: '/preview-modern.png',
+  },
+  {
+    id: 'classic',
+    name: 'Classic',
+    description: 'Traditional layout ideal for government or academic jobs.',
+    preview: '/preview-classic.png',
+  },
 ];
 
 const plans = [
@@ -37,7 +49,7 @@ export default function ResumeBuilderPage() {
   const [showPlans, setShowPlans] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
 
-  const testScore = 80; // Replace with actual logic if needed
+  const testScore = 80;
 
   useEffect(() => {
     const stored = localStorage.getItem('userProfile');
@@ -71,7 +83,7 @@ export default function ResumeBuilderPage() {
       const { data } = await axios.post('/api/payment', { amount: selectedPlan.price });
 
       const options = {
-        key: 'RAZORPAY_KEY', // Replace with your Razorpay key
+        key: 'RAZORPAY_KEY', // Replace with your actual Razorpay key
         amount: data.amount,
         currency: 'INR',
         name: 'AI Resume Builder',
@@ -105,18 +117,30 @@ export default function ResumeBuilderPage() {
 
   return (
     <Box p={4}>
+      {/* Back Button */}
+      <Box display="flex" alignItems="center" mb={3}>
+        <IconButton onClick={() => router.push('/user/Userdashboard')}>
+          <ArrowBackIcon />
+        </IconButton>
+        <Typography variant="h6" ml={1}>
+          Back to Dashboard
+        </Typography>
+      </Box>
+
+      {/* Template Selection */}
       <Typography variant="h4" gutterBottom>
         Choose Resume Template
       </Typography>
 
-      <Grid container spacing={2}>
+      <Grid container spacing={3}>
         {templates.map((template) => (
           <Grid item xs={12} md={6} key={template.id}>
             <Card
               onClick={() => setSelectedTemplate(template.id)}
               sx={{
-                border: selectedTemplate === template.id ? '2px solid #1976d2' : '',
+                border: selectedTemplate === template.id ? '2px solid #1976d2' : '1px solid #ccc',
                 cursor: 'pointer',
+                transition: '0.3s',
               }}
             >
               <CardMedia
@@ -129,6 +153,9 @@ export default function ResumeBuilderPage() {
                 <Typography variant="h6" align="center">
                   {template.name}
                 </Typography>
+                <Typography variant="body2" align="center" color="text.secondary">
+                  {template.description}
+                </Typography>
               </CardContent>
             </Card>
           </Grid>
@@ -136,9 +163,9 @@ export default function ResumeBuilderPage() {
       </Grid>
 
       <Box mt={4}>
-        <Button variant="outlined" onClick={handlePreview}>
+        <Button variant="outlined" onClick={handlePreview} sx={{ mr: 2 }}>
           Preview Resume
-        </Button>{' '}
+        </Button>
         <Button variant="contained" color="success" onClick={handleDownload}>
           Download Resume
         </Button>
@@ -174,7 +201,7 @@ export default function ResumeBuilderPage() {
 
             <Box mt={2}>
               <Typography variant="h6">Skills</Typography>
-              <Typography>{profile.skills.join(', ') || 'None'}</Typography>
+              <Typography>{profile.skills?.join(', ') || 'None'}</Typography>
             </Box>
 
             <Box mt={2}>
@@ -184,7 +211,7 @@ export default function ResumeBuilderPage() {
 
             <Box mt={2}>
               <Typography variant="h6">Desired Jobs</Typography>
-              <Typography>{profile.desiredJobs.join(', ') || 'Not Set'}</Typography>
+              <Typography>{profile.desiredJobs?.join(', ') || 'Not Set'}</Typography>
             </Box>
           </Box>
         </DialogContent>
@@ -202,11 +229,11 @@ export default function ResumeBuilderPage() {
                   sx={{
                     p: 2,
                     cursor: 'pointer',
-                    border: selectedPlan?.id === plan.id ? '2px solid #1976d2' : '',
+                    border: selectedPlan?.id === plan.id ? '2px solid #1976d2' : '1px solid #ccc',
                   }}
                 >
                   <Typography variant="subtitle1">{plan.name}</Typography>
-                  <Typography variant="body2">
+                  <Typography variant="body2" color="text.secondary">
                     {plan.limit === Infinity
                       ? 'Unlimited Resumes'
                       : `${plan.limit} Resume Downloads`}{' '}

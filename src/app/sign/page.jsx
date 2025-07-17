@@ -41,7 +41,7 @@ export default function SignPage() {
     }
 
     try {
-      const res = await axios.post('http://localhost:5000/api/auth/register', {
+      await axios.post('http://localhost:5000/api/auth/register', {
         fullName,
         email,
         password,
@@ -65,11 +65,11 @@ export default function SignPage() {
     e.preventDefault();
     setError('');
 
-    try {
-      const res = await axios.post('http://localhost:5000/api/auth/login', {
-        email: signInEmail,
-        password: signInPassword,
-      });
+  try {
+    const res = await axios.post('http://localhost:5000/api/auth/login', {
+      email: signInEmail,
+      password: signInPassword,
+    });
 
       const { user, token } = res.data;
 

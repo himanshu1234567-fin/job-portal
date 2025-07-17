@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Button, Card, CardContent, Typography, Radio, RadioGroup, FormControlLabel,
-  Checkbox, LinearProgress, Divider
+  Box, Button, Card, CardContent, Typography, Radio, RadioGroup,
+  FormControlLabel, Checkbox, LinearProgress, Divider
 } from '@mui/material';
 
 const TestPage = () => {
@@ -16,20 +16,35 @@ const TestPage = () => {
   const [timer, setTimer] = useState(0);
 
   useEffect(() => {
-    const savedQuestions = localStorage.getItem('questions');
-    if (savedQuestions) {
-      const parsedQuestions = JSON.parse(savedQuestions);
-      setQuestions(parsedQuestions);
+    const fetchQuestions = async () => {
+      try {
+        const token = localStorage.getItem('authToken');
 
-      const totalDuration = parsedQuestions.reduce((sum, q) => {
-        const duration = Number(q.duration) || 60;
-        return sum + duration;
-      }, 0);
+        const res = await fetch('http://localhost:3000/api/questions', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
 
-      const finalDuration = totalDuration > 0 ? totalDuration : 60;
-      setTotalTime(finalDuration);
-      setTimer(finalDuration);
-    }
+        const json = await res.json();
+        const fetchedQuestions = Array.isArray(json.data) ? json.data : [];
+
+        setQuestions(fetchedQuestions);
+
+        const totalDuration = fetchedQuestions.reduce((sum, q) => {
+          const duration = Number(q.duration) || 60;
+          return sum + duration;
+        }, 0);
+
+        const finalDuration = totalDuration > 0 ? totalDuration : 60;
+        setTotalTime(finalDuration);
+        setTimer(finalDuration);
+      } catch (error) {
+        console.error('Failed to fetch questions:', error);
+      }
+    };
+
+    fetchQuestions();
   }, []);
 
   useEffect(() => {
@@ -54,8 +69,8 @@ const TestPage = () => {
     const currentQuestion = questions[currentIndex];
     if (!currentQuestion) return;
     const key = currentQuestion.title;
-
     const previousAnswers = userAnswers[key] || [];
+
     if (previousAnswers.includes(optionText)) {
       setUserAnswers({
         ...userAnswers,
@@ -88,9 +103,9 @@ const TestPage = () => {
       const userAnswer = userAnswers[question.title];
 
       if (question.allowMultipleCorrect) {
-        const correct = Array.isArray(userAnswer) &&
-          userAnswer.length === correctAnswers.length &&
-          userAnswer.every(ans => correctAnswers.includes(ans));
+        const correct = Array.isArray(userAnswer)
+          && userAnswer.length === correctAnswers.length
+          && userAnswer.every(ans => correctAnswers.includes(ans));
         if (correct) calculatedScore += 1;
       } else {
         if (userAnswer === correctAnswers[0]) {
@@ -106,7 +121,7 @@ const TestPage = () => {
   if (questions.length === 0) {
     return (
       <Typography sx={{ m: 4 }} variant="h6">
-        No Questions Found. Please create some questions first.
+        No Questions Found. Please add questions first.
       </Typography>
     );
   }
@@ -138,7 +153,7 @@ const TestPage = () => {
       <Card sx={{ borderRadius: 3, boxShadow: 3 }}>
         <CardContent>
           <Typography variant="h6" sx={{ mb: 2 }}>
-            {currentQuestion.text}
+            {currentQuestion.question}
           </Typography>
 
           <Divider sx={{ mb: 2 }} />
