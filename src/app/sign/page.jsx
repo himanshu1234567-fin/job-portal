@@ -47,9 +47,17 @@ export default function SignPage() {
     }
 
     try {
+<<<<<<< HEAD
       const res = await apiFetch('/api/auth/register', {
         method: 'POST',
         body: JSON.stringify({ fullName, email, password, confirmPassword }),
+=======
+      await axios.post('http://localhost:5000/api/auth/register', {
+        fullName,
+        email,
+        password,
+        confirmPassword,
+>>>>>>> 64d1b58509abda55901ec69dc61f8bd1e0acf86b
       });
 
       const { user, token } = res;
@@ -72,6 +80,7 @@ export default function SignPage() {
     e.preventDefault();
     setError('');
 
+<<<<<<< HEAD
     if (!signInEmail || !signInPassword) {
       return setError('Please enter both email and password.');
     }
@@ -84,6 +93,13 @@ export default function SignPage() {
           password: signInPassword,
         }),
       });
+=======
+  try {
+    const res = await axios.post('http://localhost:5000/api/auth/login', {
+      email: signInEmail,
+      password: signInPassword,
+    });
+>>>>>>> 64d1b58509abda55901ec69dc61f8bd1e0acf86b
 
       const { user, token } = res;
 

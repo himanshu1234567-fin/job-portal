@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import axios from "axios";
 import {
   Box,
   Typography,
@@ -19,19 +20,40 @@ import EditIcon from "@mui/icons-material/Edit";
 export default function CreativeUserHeader() {
   const [anchorEl, setAnchorEl] = useState(null);
   const [profileProgress, setProfileProgress] = useState(0);
+  const [user, setUser] = useState({ name: "", email: "" });
   const open = Boolean(anchorEl);
-
-  const user = {
-    name: "Sonalika Rathore",
-    email: "sonalirathore262@gmail.com",
-  };
 
   const handleClick = (event) => setAnchorEl(event.currentTarget);
   const handleClose = () => setAnchorEl(null);
 
+  // Fetch profile progress from localStorage
   useEffect(() => {
     const progress = JSON.parse(localStorage.getItem("profileProgress")) || 0;
     setProfileProgress(progress);
+  }, []);
+
+  // Fetch user data from backend
+  useEffect(() => {
+    const fetchUser = async () => {
+      const token = localStorage.getItem("authToken");
+      if (!token) return;
+
+      try {
+        const res = await axios.get("http://localhost:5000/api/candidates/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const data = res.data;
+        setUser({
+          name: data.fullName || "",
+          email: data.email || "",
+        });
+      } catch (err) {
+        console.error("Error fetching user data:", err);
+      }
+    };
+
+    fetchUser();
   }, []);
 
   return (
@@ -51,11 +73,18 @@ export default function CreativeUserHeader() {
       >
         <Box>
           <Typography variant="h5" fontWeight={600}>
-            Welcome back, {user.name} 👋
+            Welcome back, {user.name || "User"} 👋
           </Typography>
-          <Typography variant="body1" mt={1}>
-            You are just {100 - profileProgress}% away from profile completion.
-          </Typography>
+          {profileProgress === 100 ? (
+  <Typography variant="body1" mt={1}>
+    🎉 Your profile is fully completed!
+  </Typography>
+) : (
+  <Typography variant="body1" mt={1}>
+    You are just {100 - profileProgress}% away from profile completion.
+  </Typography>
+)}
+
         </Box>
 
         <Box textAlign="right">
@@ -65,7 +94,7 @@ export default function CreativeUserHeader() {
             </Badge>
             <IconButton onClick={handleClick}>
               <Avatar sx={{ bgcolor: "#fff", color: "#1976d2" }}>
-                {user.name[0]}
+                {user.name ? user.name[0] : "U"}
               </Avatar>
             </IconButton>
           </Box>
@@ -101,14 +130,14 @@ export default function CreativeUserHeader() {
       >
         <Box display="flex" gap={2} alignItems="center">
           <Avatar sx={{ bgcolor: "#1976d2", width: 56, height: 56 }}>
-            {user.name[0]}
+            {user.name ? user.name[0] : "U"}
           </Avatar>
           <Box>
             <Typography variant="subtitle1" fontWeight={600}>
-              {user.name}
+              {user.name || "User"}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              {user.email}
+              {user.email || "example@email.com"}
             </Typography>
           </Box>
         </Box>
