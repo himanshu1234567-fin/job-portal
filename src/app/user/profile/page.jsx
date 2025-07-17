@@ -1,84 +1,97 @@
 "use client";
 import {
-  Avatar,
   Box,
   Button,
   Grid,
   IconButton,
-  Input,
   Paper,
   TextField,
   Typography,
-  Chip,
   LinearProgress,
-  Stack,
-  Divider,
+  Alert,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation"; // or useNavigate() from react-router-dom
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import axios from "axios";
 
 const defaultProfile = {
-  image: "/user.png",
-  name: "",
+  fullName: "",
   email: "",
   dob: "",
   phone: "",
   education: {
-    tenth: "",
-    twelfth: "",
-    graduation: {
-      collage_name: "",
-      Graducation: "",
-      branch: "",
-      year: "",
-      CGPA: "",
-    },
+    board10: "",
+    percentage10: "",
+    board12: "",
+    percentage12: "",
+    college: "",
+    collegeDegree: "",
+    branch: "",
+    passingYear: "",
+    cgpa: "",
   },
-  skills: [],
+  skills: "",
   experience: "",
-  desiredJobs: [],
-  resume: "",
+  desirableJob: "",
 };
 
 const Profile = () => {
   const [user, setUser] = useState(defaultProfile);
   const [editing, setEditing] = useState(false);
-  const [inputSkill, setInputSkill] = useState("");
-  const [inputJob, setInputJob] = useState("");
-  const fileInputRef = useRef(null);
-  const resumeInputRef = useRef(null); 
-  const router = useRouter(); // back arrow navigation
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const router = useRouter();
 
+  // 🔄 Fetch profile from backend on mount
   useEffect(() => {
-    const storedProfile = localStorage.getItem("userProfile");
-    if (storedProfile) setUser(JSON.parse(storedProfile));
+    const fetchProfile = async () => {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        setError("You are not logged in.");
+        return;
+      }
+
+      try {
+        const res = await axios.get("http://localhost:5000/api/candidates", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        // Fill missing fields if needed
+        setUser({ ...defaultProfile, ...res.data });
+      } catch (err) {
+        setError(err.response?.data?.error || "Failed to load profile");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem("userProfile", JSON.stringify(user));
-  }, [user]);
-
   const calculateCompletion = () => {
-    const graduationComplete =
-      user.education.graduation.collage_name &&
-      user.education.graduation.branch &&
-      user.education.graduation.year;
+    const educationComplete =
+      user.education.college &&
+      user.education.collegeDegree &&
+      user.education.branch &&
+      user.education.passingYear &&
+      user.education.cgpa;
 
     const fields = [
-      user.name,
+      user.fullName,
       user.email,
       user.dob,
       user.phone,
-      user.education.tenth,
-      user.education.twelfth,
-      graduationComplete,
-      user.skills.length > 0,
+      user.education.board10,
+      user.education.percentage10,
+      user.education.board12,
+      user.education.percentage12,
+      educationComplete,
+      user.skills,
       user.experience,
-      user.desiredJobs.length > 0,
-      user.resume.length>0,
+      user.desirableJob,
     ];
     const filled = fields.filter(Boolean).length;
     return Math.round((filled / fields.length) * 100);
@@ -86,94 +99,101 @@ const Profile = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-
-    // Email must end with @gmail.com
-    if (name === "email" && value && !value.endsWith("@gmail.com")) return;
-
-    // Phone must be 10 digit number only
-    if (name === "phone" && value && !/^\d{0,10}$/.test(value)) return;
-
+    if (name === "phone" && value && !/^[0-9]{0,10}$/.test(value)) return;
     setUser((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleEducationChange = (e) => {
     const { name, value } = e.target;
-    const gradFields = ["collage_name", "Graducation", "branch", "year", "CGPA"];
-    if (gradFields.includes(name)) {
-      setUser((prev) => ({
-        ...prev,
-        education: {
-          ...prev.education,
-          graduation: {
-            ...prev.education.graduation,
-            [name]: value,
-          },
-        },
-      }));
+    setUser((prev) => ({
+      ...prev,
+      education: {
+        ...prev.education,
+        [name]: value,
+      },
+    }));
+  };
+
+const saveProfile = async () => {
+  const token = localStorage.getItem("authToken");
+  if (!token) {
+    setError("No authentication token found. Please sign in.");
+    return;
+  }
+
+  // Basic validation (optional but recommended)
+  if (!user.fullName || !user.email || !user.phone) {
+    setError("Please fill in required fields: name, email, phone.");
+    return;
+  }
+
+  try {
+    setLoading(true);
+    setError("");
+
+    // Prepare and convert types where necessary
+    const preparedUser = {
+      ...user,
+      skills: user.skills
+        ? user.skills.split(",").map((s) => s.trim()).filter(Boolean)
+        : [],
+      experience: Number(user.experience),
+      education: {
+        ...user.education,
+        percentage10: Number(user.education.percentage10),
+        percentage12: Number(user.education.percentage12),
+        cgpa: Number(user.education.cgpa),
+        passingYear: Number(user.education.passingYear),
+      },
+    };
+
+    console.log("Prepared data:", preparedUser);
+
+    // API call
+     const res = await axios.put("http://localhost:5000/api/candidates", preparedUser, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    console.log("Server response:", res.data);
+
+    // Set updated user state
+    setUser({ ...defaultProfile, ...res.data });
+
+    // Optionally store profile completion flag
+    localStorage.setItem("profileComplete", JSON.stringify(calculateCompletion() === 100));
+    setEditing(false);
+  } catch (err) {
+    console.error("PUT request failed:");
+    if (err.response) {
+      console.error("Response error:", JSON.stringify(err.response.data, null, 2));
+
+      // console.error("Response error:", err.response.data);
+      setError(err.response.data.error || "Failed to save profile");
+    } else if (err.request) {
+      console.error("No response received:", err.request);
+      setError("No response from server");
     } else {
-      setUser((prev) => ({
-        ...prev,
-        education: {
-          ...prev.education,
-          [name]: value,
-        },
-      }));
+      console.error("General error:", err.message);
+      setError("Something went wrong");
     }
-  };
-
-  const addSkill = () => {
-    if (inputSkill.trim()) {
-      setUser((prev) => ({ ...prev, skills: [...prev.skills, inputSkill.trim()] }));
-      setInputSkill("");
-    }
-  };
-
-  const removeSkill = (index) => {
-    const updated = [...user.skills];
-    updated.splice(index, 1);
-    setUser({ ...user, skills: updated });
-  };
-
-  const addJob = () => {
-    if (inputJob.trim()) {
-      setUser((prev) => ({
-        ...prev,
-        desiredJobs: [...prev.desiredJobs, inputJob.trim()],
-      }));
-      setInputJob("");
-    }
-  };
-
-  const removeJob = (index) => {
-    const updated = [...user.desiredJobs];
-    updated.splice(index, 1);
-    setUser({ ...user, desiredJobs: updated });
-  };
-
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const imageUrl = URL.createObjectURL(file);
-      setUser((prev) => ({ ...prev, image: imageUrl }));
-    }
-  };
-
-  const removeImage = () => {
-    setUser((prev) => ({ ...prev, image: "/user.png" }));
-  };
-
-  const progress = calculateCompletion();
-
-  const handleResumeUpload = (e) => {
-  const file = e.target.files[0];
-  if (file) {
-    setUser((prev) => ({ ...prev, resume: file.name }));
+  } finally {
+    setLoading(false);
   }
 };
 
-const removeResume = () => {
-  setUser((prev) => ({ ...prev, resume: "" }));
-};
+
+
+
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+        <Typography>Loading profile...</Typography>
+      </Box>
+    );
+  }
 
   return (
     <Box p={2} bgcolor="#f5f5f5" minHeight="100vh">
@@ -186,60 +206,25 @@ const removeResume = () => {
         </Typography>
       </Box>
 
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
       <Paper elevation={3} sx={{ p: 4, maxWidth: 900, mx: "auto", border: "1px solid #ddd" }}>
         <Grid container spacing={3}>
-          {/* Profile Image */}
-          <Grid item xs={12} sm={3} textAlign="center">
-            <Avatar
-              src={user.image !== "/user.png" ? user.image : undefined}
-              alt="Profile"
-              sx={{ width: 100, height: 100, mx: "auto", fontSize: 32 }}
-            >
-              {user.image === "/user.png"
-                ? user.name
-                  ? user.name
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")
-                      .substring(0, 2)
-                      .toUpperCase()
-                  : "U"
-                : ""}
-            </Avatar>
-            {editing && (
-              <>
-                <Button size="small" onClick={() => fileInputRef.current.click()}>
-                  Upload
-                </Button>
-                <Button size="small" color="error" onClick={removeImage}>
-                  Remove
-                </Button>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  hidden
-                  accept="image/*"
-                  onChange={handleImageChange}
-                />
-              </>
-            )}
-          </Grid>
-
           {/* Name & Email */}
-          <Grid item xs={12} sm={9}>
+          <Grid item xs={12}>
             {editing ? (
               <>
                 <TextField
                   label="Full Name"
                   fullWidth
                   margin="dense"
-                  name="name"
-                  value={user.name}
+                  name="fullName"
+                  value={user.fullName}
                   onChange={handleChange}
                   required
                 />
                 <TextField
-                  label="Email (@gmail.com)"
+                  label="Email"
                   fullWidth
                   margin="dense"
                   name="email"
@@ -250,18 +235,18 @@ const removeResume = () => {
               </>
             ) : (
               <>
-                <Typography variant="h5">{user.name || "No Name"}</Typography>
+                <Typography variant="h5">{user.fullName || "No Name"}</Typography>
                 <Typography color="text.secondary">{user.email || "No Email"}</Typography>
               </>
             )}
           </Grid>
 
-          {/* Progress */}
+          {/* Profile Completion */}
           <Grid item xs={12}>
             <Typography variant="body2" mb={1}>
-              Profile Completion: {progress}%
+              Profile Completion: {calculateCompletion()}%
             </Typography>
-            <LinearProgress variant="determinate" value={progress} />
+            <LinearProgress variant="determinate" value={calculateCompletion()} />
           </Grid>
 
           {/* Personal Details */}
@@ -311,80 +296,29 @@ const removeResume = () => {
               </Typography>
               {editing ? (
                 <Grid container spacing={2}>
-                  <Grid item xs={6}>
-                    <TextField
-                      label="10th %"
-                      fullWidth
-                      name="tenth"
-                      value={user.education.tenth}
-                      onChange={handleEducationChange}
-                    />
-                  </Grid>
-                  <Grid item xs={6}>
-                    <TextField
-                      label="12th %"
-                      fullWidth
-                      name="twelfth"
-                      value={user.education.twelfth}
-                      onChange={handleEducationChange}
-                    />
-                  </Grid>
-                  <Grid item xs={6}>
-                    <TextField
-                      label="College"
-                      name="collage_name"
-                      fullWidth
-                      value={user.education.graduation.collage_name}
-                      onChange={handleEducationChange}
-                    />
-                  </Grid>
-                  <Grid item xs={6}>
-                    <TextField
-                      label="Degree"
-                      name="Graducation"
-                      fullWidth
-                      value={user.education.graduation.Graducation}
-                      onChange={handleEducationChange}
-                    />
-                  </Grid>
-                  <Grid item xs={6}>
-                    <TextField
-                      label="Branch"
-                      name="branch"
-                      fullWidth
-                      value={user.education.graduation.branch}
-                      onChange={handleEducationChange}
-                    />
-                  </Grid>
-                  <Grid item xs={6}>
-                    <TextField
-                      label="Passing Year"
-                      name="year"
-                      fullWidth
-                      value={user.education.graduation.year}
-                      onChange={handleEducationChange}
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TextField
-                      label="CGPA / Percentage"
-                      name="CGPA"
-                      fullWidth
-                      value={user.education.graduation.CGPA}
-                      onChange={handleEducationChange}
-                    />
-                  </Grid>
+                  {["board10", "percentage10", "board12", "percentage12", "college", "collegeDegree", "branch", "passingYear", "cgpa"].map((field, i) => (
+                    <Grid item xs={6} key={field}>
+                      <TextField
+                        label={field.replace(/([A-Z])/g, " $1").replace(/^./, s => s.toUpperCase())}
+                        fullWidth
+                        name={field}
+                        value={user.education[field] || ""}
+                        onChange={handleEducationChange}
+                      />
+                    </Grid>
+                  ))}
                 </Grid>
               ) : (
                 <>
-                  <Typography>10th: {user.education.tenth || "Not Set"}</Typography>
-                  <Typography>12th: {user.education.twelfth || "Not Set"}</Typography>
                   <Typography>
-                    Graduation: {user.education.graduation.Graducation || "Degree"} in{" "}
-                    {user.education.graduation.branch || "Branch"} from{" "}
-                    {user.education.graduation.collage_name || "College"} (
-                    {user.education.graduation.year || "Year"}, CGPA:{" "}
-                    {user.education.graduation.CGPA || "N/A"})
+                    10th: {user.education.board10 || "Not Set"} ({user.education.percentage10 || "Not Set"}%)
+                  </Typography>
+                  <Typography>
+                    12th: {user.education.board12 || "Not Set"} ({user.education.percentage12 || "Not Set"}%)
+                  </Typography>
+                  <Typography>
+                    Graduation: {user.education.collegeDegree || "Degree"} in {user.education.branch || "Branch"} from {user.education.college || "College"} (
+                    {user.education.passingYear || "Year"}, CGPA: {user.education.cgpa || "N/A"})
                   </Typography>
                 </>
               )}
@@ -394,31 +328,18 @@ const removeResume = () => {
           {/* Skills */}
           <Grid item xs={12}>
             <Paper variant="outlined" sx={{ p: 2 }}>
-              <Typography variant="h6" gutterBottom>
-                Skills
-              </Typography>
-              <Stack direction="row" spacing={1} flexWrap="wrap">
-                {user.skills.map((skill, idx) => (
-                  <Chip
-                    key={idx}
-                    label={skill}
-                    onDelete={editing ? () => removeSkill(idx) : undefined}
-                    color="primary"
-                    sx={{ my: 0.5 }}
-                  />
-                ))}
-              </Stack>
-              {editing && (
-                <Stack direction="row" spacing={2} mt={2}>
-                  <TextField
-                    label="Add Skill"
-                    value={inputSkill}
-                    onChange={(e) => setInputSkill(e.target.value)}
-                  />
-                  <Button variant="contained" onClick={addSkill}>
-                    Add
-                  </Button>
-                </Stack>
+              <Typography variant="h6" gutterBottom>Skills</Typography>
+              {editing ? (
+                <TextField
+                  fullWidth
+                  label="Skills (comma-separated)"
+                  name="skills"
+                  value={user.skills}
+                  onChange={handleChange}
+                  placeholder="e.g., JavaScript,Node.js,MongoDB"
+                />
+              ) : (
+                <Typography>{user.skills || "Not Set"}</Typography>
               )}
             </Paper>
           </Grid>
@@ -426,104 +347,49 @@ const removeResume = () => {
           {/* Experience */}
           <Grid item xs={12}>
             <Paper variant="outlined" sx={{ p: 2 }}>
-              <Typography variant="h6" gutterBottom>
-                Experience
-              </Typography>
+              <Typography variant="h6" gutterBottom>Experience</Typography>
               {editing ? (
                 <TextField
                   fullWidth
-                  multiline
-                  rows={3}
+                  label="Experience (Years)"
                   name="experience"
                   value={user.experience}
                   onChange={handleChange}
+                  type="number"
                 />
               ) : (
-                <Typography>{user.experience || "Not Set"}</Typography>
+                <Typography>{user.experience || "Not Set"} years</Typography>
               )}
             </Paper>
           </Grid>
 
-          {/* Desired Jobs */}
+          {/* Desired Job */}
           <Grid item xs={12}>
             <Paper variant="outlined" sx={{ p: 2 }}>
-              <Typography variant="h6" gutterBottom>
-                Desired Jobs
-              </Typography>
-              <Stack spacing={1}>
-                {user.desiredJobs.map((job, idx) => (
-                  <Box key={idx} display="flex" alignItems="center">
-                    <Typography>{job}</Typography>
-                    {editing && (
-                      <IconButton size="small" onClick={() => removeJob(idx)}>
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    )}
-                  </Box>
-                ))}
-              </Stack>
-              {editing && (
-                <Stack direction="row" spacing={2} mt={2}>
-                  <TextField
-                    label="Add Job"
-                    value={inputJob}
-                    onChange={(e) => setInputJob(e.target.value)}
-                  />
-                  <Button variant="contained" onClick={addJob} color="success">
-                    Add
-                  </Button>
-                </Stack>
+              <Typography variant="h6" gutterBottom>Desired Job</Typography>
+              {editing ? (
+                <TextField
+                  fullWidth
+                  label="Desired Job"
+                  name="desirableJob"
+                  value={user.desirableJob}
+                  onChange={handleChange}
+                />
+              ) : (
+                <Typography>{user.desirableJob || "Not Set"}</Typography>
               )}
             </Paper>
           </Grid>
-          {/* Resume Upload */}
-<Grid item xs={12}>
-  <Paper variant="outlined" sx={{ p: 2 }}>
-    <Typography variant="h6" gutterBottom>Resume</Typography>
-
-    {user.resume ? (
-      <Box display="flex" alignItems="center" justifyContent="space-between">
-        <Typography>{user.resume}</Typography>
-        {editing && (
-          <Button color="error" onClick={removeResume}>Remove</Button>
-        )}
-      </Box>
-    ) : (
-      editing && (
-        <>
-          <input
-            type="file"
-            ref={resumeInputRef}
-            hidden
-            accept=".pdf,.doc,.docx"
-            onChange={handleResumeUpload}
-          />
-          <Button variant="outlined" onClick={() => resumeInputRef.current.click()}>
-            Upload Resume
-          </Button>
-        </>
-      )
-    )}
-  </Paper>
-</Grid>
-
 
           {/* Edit/Save Button */}
           <Grid item xs={12} textAlign="right">
             <Button
               variant="contained"
               color={editing ? "success" : "primary"}
-              onClick={() => {
-                if (editing) {
-                  const progress = calculateCompletion();
-                  localStorage.setItem("profileComplete", JSON.stringify(progress === 100));
-                  setEditing(false);
-                } else {
-                  setEditing(true);
-                }
-              }}
+              onClick={editing ? saveProfile : () => setEditing(true)}
+              disabled={loading}
             >
-              {editing ? "Save" : "Edit Profile"}
+              {loading ? "Saving..." : editing ? "Save" : "Edit Profile"}
             </Button>
           </Grid>
         </Grid>
