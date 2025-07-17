@@ -11,8 +11,8 @@ import {
   Tab,
   Alert,
 } from '@mui/material';
-import axios from 'axios';
 import { useRouter } from 'next/navigation';
+import { apiFetch } from '../utils/api.js';
 
 export default function SignPage() {
   const [tab, setTab] = useState(0);
@@ -36,28 +36,35 @@ export default function SignPage() {
 
   const handleSignUp = async (e) => {
     e.preventDefault();
+    setError('');
+
+    if (!fullName || !email || !password || !confirmPassword) {
+      return setError('Please fill all fields.');
+    }
+
     if (password !== confirmPassword) {
       return setError('Passwords do not match');
     }
 
     try {
-      const res = await axios.post('http://localhost:3000/api/auth/register', {
-        fullName,
-        email,
-        password,
-        confirmPassword,
+      const res = await apiFetch('/api/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({ fullName, email, password, confirmPassword }),
       });
 
-      const { user, token } = res.data;
+      const { user, token } = res;
 
       localStorage.setItem('currentUser', JSON.stringify(user));
       localStorage.setItem('authToken', token);
       localStorage.setItem('justSignedIn', 'true');
 
-      setError('');
+      setFullName('');
+      setEmail('');
+      setPassword('');
+      setConfirmPassword('');
       router.push('/');
     } catch (err) {
-      setError(err.response?.data?.error || 'Registration failed');
+      setError(err.message || 'Registration failed');
     }
   };
 
@@ -65,23 +72,30 @@ export default function SignPage() {
     e.preventDefault();
     setError('');
 
+    if (!signInEmail || !signInPassword) {
+      return setError('Please enter both email and password.');
+    }
+
     try {
-      const res = await axios.post('http://localhost:3000/api/auth/login', {
-        email: signInEmail,
-        password: signInPassword,
+      const res = await apiFetch('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: signInEmail,
+          password: signInPassword,
+        }),
       });
 
-      const { user, token } = res.data;
+      const { user, token } = res;
 
-      // Save to localStorage
       localStorage.setItem('currentUser', JSON.stringify(user));
       localStorage.setItem('authToken', token);
       localStorage.setItem('justSignedIn', 'true');
 
+      setSignInEmail('');
+      setSignInPassword('');
       router.push('/');
     } catch (err) {
-      console.log('Login Error:', err.response?.data);
-      setError(err.response?.data?.error || 'Login failed');
+      setError(err.message || 'Login failed');
     }
   };
 
@@ -97,10 +111,13 @@ export default function SignPage() {
         </Tabs>
       </Box>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
 
       {tab === 0 ? (
-        // Sign In Form
         <Box component="form" onSubmit={handleSignIn} noValidate sx={{ mt: 1 }}>
           <TextField
             margin="normal"
@@ -125,7 +142,6 @@ export default function SignPage() {
           </Button>
         </Box>
       ) : (
-        // Sign Up Form
         <Box component="form" onSubmit={handleSignUp} noValidate sx={{ mt: 1 }}>
           <TextField
             margin="normal"

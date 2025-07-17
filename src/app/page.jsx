@@ -1,255 +1,169 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import axios from 'axios';
 import {
-  AppBar,
   Box,
-  Button,
   Container,
-  Drawer,
-  IconButton,
-  Toolbar,
   Typography,
-  List,
-  ListItem,
-  ListItemText,
-  Divider,
-  Avatar,
-  Tooltip,
+  Card,
+  CardContent,
   CircularProgress,
+  Avatar,
+  Button,
+  Grid,
+  Divider,
 } from '@mui/material';
-import MenuIcon from '@mui/icons-material/Menu';
-import CloseIcon from '@mui/icons-material/Close';
-import CompleteProfilePopup from '../components/PopupCard';
+import ProfileEdit from '../components/ProfilePopup';
 
-const navigation = [
-  { name: 'Product', href: '#' },
-  { name: 'Features', href: '#' },
-  { name: 'Marketplace', href: '#' },
-  { name: 'Company', href: '#' },
-];
-
-export default function ResumeBuilder() {
-  const [mobileOpen, setMobileOpen] = useState(false);
+export default function ResumeDashboard() {
   const [currentUser, setCurrentUser] = useState(null);
   const [progress, setProgress] = useState(0);
   const [showPopup, setShowPopup] = useState(false);
+  const [resumeData, setResumeData] = useState(null);
 
+  // Fetch user data and resume
   useEffect(() => {
     const storedUser = localStorage.getItem('currentUser');
-    const justSignedIn = localStorage.getItem('justSignedIn');
-    const popupDismissed = localStorage.getItem('profilePopupDismissed');
+    const profileProgress = parseInt(localStorage.getItem('profileProgress') || '0', 10);
+    const hasSeenPopup = localStorage.getItem('hasSeenProfilePopup') === 'true';
 
     if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      setCurrentUser(parsedUser);
+      const user = JSON.parse(storedUser);
+      setCurrentUser(user);
+      setProgress(profileProgress);
 
-      if (justSignedIn === 'true') {
-        localStorage.removeItem('justSignedIn');
-        localStorage.removeItem('profilePopupDismissed'); // reset dismissal
+      if (profileProgress <= 75 && !hasSeenPopup) {
         setShowPopup(true);
-      } else if (!popupDismissed) {
-        setShowPopup(true);
+        localStorage.setItem('hasSeenProfilePopup', 'true');
       }
+
+      // Example API: You should replace this with your actual API
+      axios.get(`/api/resume/${user.id}`).then((res) => {
+        setResumeData(res.data);
+      }).catch((err) => {
+        console.error('Failed to fetch resume:', err);
+      });
     }
   }, []);
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setProgress((prev) => (prev >= 100 ? 0 : prev + 10));
-    }, 800);
-    return () => clearInterval(timer);
-  }, []);
-
-  const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
-
-  const handleLogout = () => {
-    localStorage.removeItem('currentUser');
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('profilePopupDismissed');
-    setCurrentUser(null);
-    window.location.reload();
-  };
-
-  const handleClosePopup = () => {
-    setShowPopup(false);
-    localStorage.setItem('profilePopupDismissed', 'true');
-  };
-
-  const drawer = (
-    <Box onClick={handleDrawerToggle} sx={{ textAlign: 'center' }}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" p={2}>
-        <img
-          alt="Logo"
-          src="https://tailwindcss.com/plus-assets/img/logos/mark.svg?color=indigo&shade=600"
-          height={32}
-        />
-        <IconButton onClick={handleDrawerToggle}>
-          <CloseIcon />
-        </IconButton>
-      </Box>
-      <Divider />
-      <List>
-        {navigation.map((item) => (
-          <ListItem button key={item.name} component="a" href={item.href}>
-            <ListItemText primary={item.name} />
-          </ListItem>
-        ))}
-        <Divider sx={{ my: 2 }} />
-        {currentUser ? (
-          <>
-            <ListItem>
-              <Box position="relative" display="inline-flex" marginRight={2}>
-                <CircularProgress
-                  variant="determinate"
-                  value={progress}
-                  size={44}
-                  thickness={4}
-                  sx={{ color: 'primary.main' }}
-                />
-                <Box
-                  top={0}
-                  left={0}
-                  bottom={0}
-                  right={0}
-                  position="absolute"
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                >
-                  <Avatar
-                    alt={currentUser.fullName}
-                    src={currentUser.photoURL || ''}
-                    sx={{ width: 36, height: 36, bgcolor: 'primary.main' }}
-                  >
-                    {currentUser.fullName?.[0]}
-                  </Avatar>
-                </Box>
-              </Box>
-              <ListItemText primary={currentUser.fullName} />
-            </ListItem>
-            <ListItem button onClick={handleLogout}>
-              <ListItemText primary="Logout" />
-            </ListItem>
-          </>
-        ) : (
-          <ListItem button component="a" href="/sign">
-            <ListItemText primary="Log in / Sign Up" />
-          </ListItem>
-        )}
-      </List>
-    </Box>
-  );
+  const handleClosePopup = () => setShowPopup(false);
 
   return (
-    <Box sx={{ flexGrow: 1 }}>
-      <AppBar position="static" color="transparent" elevation={0}>
-        <Toolbar sx={{ justifyContent: 'space-between' }}>
-          <Box display="flex" alignItems="center">
-            <a href="/">
-              <img
-                alt="Logo"
-                src="https://img.freepik.com/free-vector/colorful-bird-illustration-gradient_343694-1741.jpg"
-                height={40}
-                className="w-16"
-              />
-            </a>
-          </Box>
-
-          <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 3, alignItems: 'center' }}>
-            {navigation.map((item) => (
-              <Button key={item.name} href={item.href} color="inherit">
-                {item.name}
-              </Button>
-            ))}
-            {currentUser ? (
-              <>
-                <Tooltip title={`${currentUser.fullName} (${progress}%)`}>
-                  <Box position="relative" display="inline-flex">
-                    <CircularProgress
-                      variant="determinate"
-                      value={progress}
-                      size={40}
-                      thickness={4}
-                      sx={{ color: 'primary.main' }}
-                    />
-                    <Box
-                      top={0}
-                      left={0}
-                      bottom={0}
-                      right={0}
-                      position="absolute"
-                      display="flex"
-                      alignItems="center"
-                      justifyContent="center"
-                    >
-                      <a href="/user/profile" style={{ textDecoration: 'none', color: 'inherit' }}>
-                        <Avatar
-                          alt={currentUser.fullName}
-                          src={currentUser.photoURL || ''}
-                          sx={{ width: 32, height: 32, bgcolor: 'secondary.main' }}
-                        >
-                          {currentUser.fullName?.[0]}
-                        </Avatar>
-                      </a>
-                    </Box>
-                  </Box>
-                </Tooltip>
-                <Button color="error" onClick={handleLogout}>
-                  Logout
-                </Button>
-              </>
-            ) : (
-              <Button href="/sign" color="primary" variant="outlined">
-                Log in / Sign Up
-              </Button>
-            )}
-          </Box>
-
-          <IconButton
-            color="inherit"
-            edge="end"
-            onClick={handleDrawerToggle}
-            sx={{ display: { md: 'none' } }}
-          >
-            <MenuIcon />
-          </IconButton>
-        </Toolbar>
-      </AppBar>
-
-      <Drawer
-        anchor="right"
-        open={mobileOpen}
-        onClose={handleDrawerToggle}
-        ModalProps={{ keepMounted: true }}
-      >
-        {drawer}
-      </Drawer>
-
-      <Container maxWidth="md" sx={{ mt: 12, textAlign: 'center' }}>
-        <Typography variant="h2" gutterBottom>
-          Start Your Career
-        </Typography>
-        <Typography variant="h6" color="textSecondary" paragraph>
-          Build a Resume/CV in 5 minutes.
-        </Typography>
-        <Box mt={4} display="flex" justifyContent="center" gap={2}>
-          {!currentUser ? (
-            <Button href="/sign" variant="contained" color="primary" size="large">
-              Get started
-            </Button>
-          ) : (
-            <Button href="/user/test" variant="contained" color="success" size="large">
-              Take Test
-            </Button>
-          )}
-          <Button href="#" color="inherit" size="large">
-            Learn more →
-          </Button>
+    <Container maxWidth="lg" sx={{ mt: 6 }}>
+      {currentUser && (
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h4" fontWeight="bold" gutterBottom>
+            👋 Welcome, {currentUser.fullName || 'User'}!
+          </Typography>
+          <Typography color="textSecondary">
+            Benefit from expert support and feedback during every step of your job search.
+          </Typography>
         </Box>
-      </Container>
+      )}
 
-      <CompleteProfilePopup open={showPopup} onClose={handleClosePopup} />
-    </Box>
+      <Grid container spacing={3}>
+        {/* Task Section */}
+        <Grid item xs={12} md={6}>
+          <Card variant="outlined">
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Tasks
+              </Typography>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="subtitle2" color="textSecondary">
+                Assessment
+              </Typography>
+              <Typography variant="body1" fontWeight="bold">
+                Continue job search assessment
+              </Typography>
+              <Typography variant="body2" color="textSecondary">
+                Learn how to improve your job search and get detailed feedback from a coach.
+              </Typography>
+              <Box mt={2} display="flex" alignItems="center">
+                <Avatar
+                  src="https://randomuser.me/api/portraits/women/44.jpg"
+                  sx={{ width: 32, height: 32, mr: 1 }}
+                />
+                <Typography variant="body2">Susan Gray</Typography>
+              </Box>
+            </CardContent>
+          </Card>
+
+          <Card variant="outlined" sx={{ mt: 3 }}>
+            <CardContent>
+              <Typography variant="subtitle2" color="textSecondary">
+                Resume
+              </Typography>
+              <Typography variant="body1" fontWeight="bold">
+                Expert resume review
+              </Typography>
+              <Typography variant="body2" color="textSecondary">
+                Get a free, confidential resume review.
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Resume Summary Section */}
+        <Grid item xs={12} md={6}>
+          <Card variant="outlined">
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Resume Snapshot
+              </Typography>
+              <Divider sx={{ my: 2 }} />
+              {resumeData ? (
+                <Box>
+                  <Typography><strong>Name:</strong> {resumeData.name}</Typography>
+                  <Typography><strong>Email:</strong> {resumeData.email}</Typography>
+                  <Typography><strong>Summary:</strong> {resumeData.summary}</Typography>
+                </Box>
+              ) : (
+                <Typography color="textSecondary">Loading resume data...</Typography>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      {/* Circular Profile Progress */}
+      {currentUser && (
+        <Box mt={6} textAlign="center">
+          <Typography variant="subtitle1" gutterBottom>
+            Profile Completion: {progress}%
+          </Typography>
+          <Box display="inline-flex" position="relative">
+            <CircularProgress
+              variant="determinate"
+              value={progress}
+              size={80}
+              thickness={5}
+              sx={{ color: 'primary.main' }}
+            />
+            <Box
+              position="absolute"
+              top={0}
+              bottom={0}
+              left={0}
+              right={0}
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+            >
+              <Avatar
+                src={currentUser.photoURL || ''}
+                sx={{ width: 56, height: 56 }}
+              >
+                {currentUser.fullName?.[0]}
+              </Avatar>
+            </Box>
+          </Box>
+        </Box>
+      )}
+
+      {/* Popup if profile is incomplete */}
+      <ProfileEdit open={showPopup} onClose={handleClosePopup} />
+    </Container>
   );
 }
