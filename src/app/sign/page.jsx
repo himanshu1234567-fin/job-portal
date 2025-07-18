@@ -12,20 +12,17 @@ import {
   Alert,
 } from '@mui/material';
 import { useRouter } from 'next/navigation';
-import { apiFetch } from '../utils/api.js';
 
 export default function SignPage() {
   const [tab, setTab] = useState(0);
   const [error, setError] = useState('');
   const router = useRouter();
 
-  // Sign Up state
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  // Sign In state
   const [signInEmail, setSignInEmail] = useState('');
   const [signInPassword, setSignInPassword] = useState('');
 
@@ -43,24 +40,27 @@ export default function SignPage() {
     }
 
     if (password !== confirmPassword) {
-      return setError('Passwords do not match');
+      return setError('Passwords do not match.');
     }
 
     try {
-<<<<<<< HEAD
-      const res = await apiFetch('/api/auth/register', {
+      const res = await fetch('http://localhost:3000/api/auth/register', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fullName, email, password, confirmPassword }),
-=======
-      await axios.post('http://localhost:5000/api/auth/register', {
-        fullName,
-        email,
-        password,
-        confirmPassword,
->>>>>>> 64d1b58509abda55901ec69dc61f8bd1e0acf86b
       });
 
-      const { user, token } = res;
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || 'Registration failed');
+      }
+
+      const { user, token } = data;
+
+      if (!user || !token) {
+        throw new Error('Invalid response from server.');
+      }
 
       localStorage.setItem('currentUser', JSON.stringify(user));
       localStorage.setItem('authToken', token);
@@ -70,9 +70,10 @@ export default function SignPage() {
       setEmail('');
       setPassword('');
       setConfirmPassword('');
+
       router.push('/');
     } catch (err) {
-      setError(err.message || 'Registration failed');
+      setError(err.message || 'Registration failed.');
     }
   };
 
@@ -80,28 +81,28 @@ export default function SignPage() {
     e.preventDefault();
     setError('');
 
-<<<<<<< HEAD
     if (!signInEmail || !signInPassword) {
       return setError('Please enter both email and password.');
     }
 
     try {
-      const res = await apiFetch('/api/auth/login', {
+      const res = await fetch('http://localhost:3000/api/auth/login', {
         method: 'POST',
-        body: JSON.stringify({
-          email: signInEmail,
-          password: signInPassword,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: signInEmail, password: signInPassword }),
       });
-=======
-  try {
-    const res = await axios.post('http://localhost:5000/api/auth/login', {
-      email: signInEmail,
-      password: signInPassword,
-    });
->>>>>>> 64d1b58509abda55901ec69dc61f8bd1e0acf86b
 
-      const { user, token } = res;
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || 'Login failed');
+      }
+
+      const { user, token } = data;
+
+      if (!user || !token) {
+        throw new Error('Invalid response from server.');
+      }
 
       localStorage.setItem('currentUser', JSON.stringify(user));
       localStorage.setItem('authToken', token);
@@ -109,9 +110,10 @@ export default function SignPage() {
 
       setSignInEmail('');
       setSignInPassword('');
+
       router.push('/');
     } catch (err) {
-      setError(err.message || 'Login failed');
+      setError(err.message || 'Login failed.');
     }
   };
 
