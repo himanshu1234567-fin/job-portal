@@ -5,6 +5,7 @@ import {
   Box, Button, Card, CardContent, Typography, Radio, RadioGroup,
   FormControlLabel, Checkbox, LinearProgress, Divider
 } from '@mui/material';
+import axios from 'axios';  
 
 const TestPage = () => {
   const [questions, setQuestions] = useState([]);
@@ -18,18 +19,17 @@ const TestPage = () => {
   useEffect(() => {
     const fetchQuestions = async () => {
       try {
-        const token = localStorage.getItem('authToken');
+        const token = localStorage.getItem('authToken'); 
 
-        const res = await fetch('http://localhost:3000/api/questions', {
+        const res = await axios.get('http://localhost:3000/api/questions', {
           headers: {
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${token}` 
           }
         });
 
-        const json = await res.json();
-        const fetchedQuestions = Array.isArray(json.data) ? json.data : [];
+        const fetchedQuestions = Array.isArray(res.data.data) ? res.data.data : [];
 
-        setQuestions(fetchedQuestions);
+        setQuestions(fetchedQuestions); // Set the questions data
 
         const totalDuration = fetchedQuestions.reduce((sum, q) => {
           const duration = Number(q.duration) || 60;
@@ -38,30 +38,30 @@ const TestPage = () => {
 
         const finalDuration = totalDuration > 0 ? totalDuration : 60;
         setTotalTime(finalDuration);
-        setTimer(finalDuration);
+        setTimer(finalDuration);  // Set the total time and initialize the timer
       } catch (error) {
-        console.error('Failed to fetch questions:', error);
+        console.error('Failed to fetch questions:', error); // Log any error in fetching questions
       }
     };
 
-    fetchQuestions();
-  }, []);
+    fetchQuestions();  // Call the function to fetch questions
+  }, []);  // Empty dependency array so it runs once on component mount
 
   useEffect(() => {
     if (timer > 0 && !showResult) {
       const interval = setInterval(() => {
-        setTimer(prev => prev - 1);
+        setTimer(prev => prev - 1);  // Decrease timer by 1 every second
       }, 1000);
       return () => clearInterval(interval);
     } else if (timer <= 0 && !showResult && questions.length > 0) {
-      submitTest();
+      submitTest();  // Submit test if time is up
     }
   }, [timer, showResult, questions]);
 
   const handleAnswerChange = (optionText) => {
     setUserAnswers({
       ...userAnswers,
-      [questions[currentIndex]?.title]: optionText
+      [questions[currentIndex]?.title]: optionText  // Store user answers
     });
   };
 
