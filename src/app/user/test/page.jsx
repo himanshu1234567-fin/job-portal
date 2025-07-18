@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Button, Card, CardContent, Typography, Radio, RadioGroup,
-  FormControlLabel, Checkbox, LinearProgress, Divider
+  FormControlLabel, Checkbox, LinearProgress, Divider, CircularProgress,
+  Alert
 } from '@mui/material';
 import axios from 'axios';  
 
@@ -15,6 +16,9 @@ const TestPage = () => {
   const [showResult, setShowResult] = useState(false);
   const [totalTime, setTotalTime] = useState(0);
   const [timer, setTimer] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [apiResponse, setApiResponse] = useState(null);
 
   useEffect(() => {
     const fetchQuestions = async () => {
@@ -29,7 +33,67 @@ const TestPage = () => {
 
         const fetchedQuestions = Array.isArray(res.data.data) ? res.data.data : [];
 
+        setLoading(true);
+        setError(null);
+        
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+          throw new Error('No authentication token found in localStorage');
+        }
+
+        const response = await fetch('http://localhost:3000/api/questions', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        setApiResponse(response); // Store response for debugging
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(
+            errorData.message || 
+            `API request failed with status ${response.status}`
+          );
+        }
+
+        const responseData = await response.json();
+        console.log('Full API response:', responseData); // Debug log
+
+        // Handle different response structures
+        let fetchedQuestions = [];
+        if (Array.isArray(responseData)) {
+          fetchedQuestions = responseData;
+        } else if (Array.isArray(responseData.data)) {
+          fetchedQuestions = responseData.data;
+        } else if (responseData.questions) {
+          fetchedQuestions = Array.isArray(responseData.questions) 
+            ? responseData.questions 
+            : [];
+        }
+
+        // Validate question structure
+        fetchedQuestions = fetchedQuestions.map(question => ({
+          ...question,
+          title: question.title || 'Untitled Question',
+          question: question.question || question.title || 'No question text provided',
+          duration: Number(question.duration) || 60,
+          options: Array.isArray(question.options) 
+            ? question.options.map(opt => ({
+                text: opt.text || 'Unlabeled option',
+                isCorrect: Boolean(opt.isCorrect)
+              }))
+            : [],
+          allowMultipleCorrect: Boolean(question.allowMultipleCorrect)
+        }));
+
+        if (fetchedQuestions.length === 0) {
+          console.warn('API returned empty questions array');
+        }
+
         setQuestions(fetchedQuestions); // Set the questions data
+
 
         const totalDuration = fetchedQuestions.reduce((sum, q) => {
           const duration = Number(q.duration) || 60;
@@ -41,6 +105,20 @@ const TestPage = () => {
         setTimer(finalDuration);  // Set the total time and initialize the timer
       } catch (error) {
         console.error('Failed to fetch questions:', error); // Log any error in fetching questions
+        // Calculate total test duration
+        const totalDuration = fetchedQuestions.reduce(
+          (sum, q) => sum + q.duration, 
+          0
+        );
+        setTotalTime(totalDuration);
+        setTimer(totalDuration);
+      } 
+      catch (err) {
+        console.error('Error fetching questions:', err);
+        setError(err.message || 'Failed to load questions');
+      } finally {
+        setLoading(false);
+
       }
     };
 
@@ -48,7 +126,7 @@ const TestPage = () => {
   }, []);  // Empty dependency array so it runs once on component mount
 
   useEffect(() => {
-    if (timer > 0 && !showResult) {
+    if (timer > 0 && !showResult && questions.length > 0) {
       const interval = setInterval(() => {
         setTimer(prev => prev - 1);  // Decrease timer by 1 every second
       }, 1000);
@@ -63,25 +141,27 @@ const TestPage = () => {
       ...userAnswers,
       [questions[currentIndex]?.title]: optionText  // Store user answers
     });
+    setUserAnswers(prev => ({
+      ...prev,
+      [questions[currentIndex]?.title]: optionText
+    }));
   };
 
   const handleMultipleAnswerChange = (optionText) => {
     const currentQuestion = questions[currentIndex];
     if (!currentQuestion) return;
+    
     const key = currentQuestion.title;
-    const previousAnswers = userAnswers[key] || [];
+    const previousAnswers = Array.isArray(userAnswers[key]) 
+      ? userAnswers[key] 
+      : [];
 
-    if (previousAnswers.includes(optionText)) {
-      setUserAnswers({
-        ...userAnswers,
-        [key]: previousAnswers.filter(ans => ans !== optionText)
-      });
-    } else {
-      setUserAnswers({
-        ...userAnswers,
-        [key]: [...previousAnswers, optionText]
-      });
-    }
+    setUserAnswers(prev => ({
+      ...prev,
+      [key]: previousAnswers.includes(optionText)
+        ? previousAnswers.filter(ans => ans !== optionText)
+        : [...previousAnswers, optionText]
+    }));
   };
 
   const handleNext = () => {
@@ -97,18 +177,18 @@ const TestPage = () => {
 
     questions.forEach((question) => {
       const correctAnswers = question.options
-        ?.filter(opt => opt.isCorrect)
-        ?.map(opt => opt.text) || [];
+        .filter(opt => opt.isCorrect)
+        .map(opt => opt.text);
 
       const userAnswer = userAnswers[question.title];
 
       if (question.allowMultipleCorrect) {
-        const correct = Array.isArray(userAnswer)
-          && userAnswer.length === correctAnswers.length
-          && userAnswer.every(ans => correctAnswers.includes(ans));
-        if (correct) calculatedScore += 1;
+        const isCorrect = Array.isArray(userAnswer) &&
+          userAnswer.length === correctAnswers.length &&
+          userAnswer.every(ans => correctAnswers.includes(ans));
+        if (isCorrect) calculatedScore += 1;
       } else {
-        if (userAnswer === correctAnswers[0]) {
+        if (correctAnswers.includes(userAnswer)) {
           calculatedScore += 1;
         }
       }
@@ -118,45 +198,132 @@ const TestPage = () => {
     setShowResult(true);
   };
 
-  if (questions.length === 0) {
+  if (loading) {
     return (
-      <Typography sx={{ m: 4 }} variant="h6">
-        No Questions Found. Please add questions first.
-      </Typography>
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        height: '100vh' 
+      }}>
+        <CircularProgress size={60} />
+        <Typography variant="h6" sx={{ mt: 3 }}>
+          Loading test questions...
+        </Typography>
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ maxWidth: 600, mx: 'auto', p: 3 }}>
+        <Alert severity="error" sx={{ mb: 3 }}>
+          <Typography variant="h6">Error Loading Test</Typography>
+          {error}
+        </Alert>
+        <Typography variant="body1" sx={{ mb: 2 }}>
+          API Response Status: {apiResponse?.status || 'N/A'}
+        </Typography>
+        <Button 
+          variant="contained" 
+          onClick={() => window.location.reload()}
+        >
+          Retry
+        </Button>
+      </Box>
+    );
+  }
+
+  if (questions.length === 0 && !loading) {
+    return (
+      <Box sx={{ maxWidth: 600, mx: 'auto', p: 3 }}>
+        <Alert severity="warning">
+          <Typography variant="h6">No Questions Available</Typography>
+          <Typography>
+            The test contains no questions. Please contact your instructor.
+          </Typography>
+        </Alert>
+      </Box>
     );
   }
 
   if (showResult) {
     return (
-      <Box sx={{ maxWidth: 600, mx: 'auto', mt: 8, textAlign: 'center' }}>
-        <Typography variant="h4" gutterBottom>Test Completed!</Typography>
-        <Typography variant="h6">Your Score: {score} / {questions.length}</Typography>
+      <Box sx={{ 
+        maxWidth: 600, 
+        mx: 'auto', 
+        p: 4, 
+        textAlign: 'center',
+        boxShadow: 3,
+        borderRadius: 2,
+        mt: 4
+      }}>
+        <Typography variant="h4" gutterBottom sx={{ color: 'primary.main' }}>
+          Test Completed!
+        </Typography>
+        <Typography variant="h5" sx={{ mb: 3 }}>
+          Your Score: {score} / {questions.length}
+        </Typography>
+        <Typography variant="body1" sx={{ mb: 2 }}>
+          {score === questions.length ? 'Perfect score! 🎉' : ''}
+          {score >= questions.length * 0.7 ? 'Well done!' : ''}
+        </Typography>
       </Box>
     );
   }
 
   const currentQuestion = questions[currentIndex];
+  if (!currentQuestion) return null;
+
+  const progressValue = totalTime > 0 
+    ? ((totalTime - timer) / totalTime) * 100 
+    : 0;
 
   return (
-    <Box sx={{ maxWidth: 600, mx: 'auto', p: 2 }}>
-      <Box sx={{ mb: 2 }}>
-        <Typography variant="body1" fontWeight="bold" textAlign="center" color={timer <= 10 ? 'error' : 'text.primary'}>
-          Time Remaining: {timer} sec
-        </Typography>
+    <Box sx={{ maxWidth: 800, mx: 'auto', p: { xs: 1, sm: 3 } }}>
+      <Box sx={{ mb: 3 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          mb: 1
+        }}>
+          <Typography variant="body1" fontWeight="bold">
+            Question {currentIndex + 1} of {questions.length}
+          </Typography>
+          <Typography 
+            variant="body1" 
+            fontWeight="bold"
+            color={timer <= 10 ? 'error.main' : 'text.primary'}
+          >
+            Time Remaining: {timer} sec
+          </Typography>
+        </Box>
         <LinearProgress
           variant="determinate"
-          value={((totalTime - timer) / totalTime) * 100}
-          sx={{ height: 10, borderRadius: 5, mt: 1 }}
+          value={progressValue}
+          sx={{ 
+            height: 8, 
+            borderRadius: 4,
+            '& .MuiLinearProgress-bar': {
+              borderRadius: 4,
+            }
+          }}
         />
       </Box>
 
-      <Card sx={{ borderRadius: 3, boxShadow: 3 }}>
+      <Card sx={{ 
+        borderRadius: 2, 
+        boxShadow: 3,
+        mb: 3
+      }}>
         <CardContent>
-          <Typography variant="h6" sx={{ mb: 2 }}>
+          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
             {currentQuestion.question}
           </Typography>
 
-          <Divider sx={{ mb: 2 }} />
+          <Divider sx={{ my: 2 }} />
 
           {currentQuestion.allowMultipleCorrect ? (
             currentQuestion.options.map((option, idx) => (
@@ -166,10 +333,16 @@ const TestPage = () => {
                   <Checkbox
                     checked={(userAnswers[currentQuestion.title] || []).includes(option.text)}
                     onChange={() => handleMultipleAnswerChange(option.text)}
+                    color="primary"
                   />
                 }
-                label={option.text}
-                sx={{ display: 'block', mb: 1 }}
+                label={<Typography variant="body1">{option.text}</Typography>}
+                sx={{ 
+                  display: 'flex', 
+                  alignItems: 'flex-start',
+                  mb: 1,
+                  ml: 0.5
+                }}
               />
             ))
           ) : (
@@ -181,42 +354,56 @@ const TestPage = () => {
                 <FormControlLabel
                   key={idx}
                   value={option.text}
-                  control={<Radio />}
-                  label={option.text}
-                  sx={{ display: 'block', mb: 1 }}
+                  control={<Radio color="primary" />}
+                  label={<Typography variant="body1">{option.text}</Typography>}
+                  sx={{ 
+                    display: 'flex', 
+                    alignItems: 'flex-start',
+                    mb: 1,
+                    ml: 0.5
+                  }}
                 />
               ))}
             </RadioGroup>
           )}
 
-          <Divider sx={{ my: 2 }} />
-
-          <Button
-            variant="contained"
-            onClick={handleNext}
-            sx={{
-              float: 'right',
-              bgcolor: '#1a73e8',
-              textTransform: 'none',
-              '&:hover': { bgcolor: '#1558b0' }
-            }}
-            disabled={
-              (currentQuestion.allowMultipleCorrect
-                ? (userAnswers[currentQuestion.title] || []).length === 0
-                : !userAnswers[currentQuestion.title])
-            }
-          >
-            {currentIndex + 1 === questions.length ? 'Submit' : 'Next'}
-          </Button>
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between',
+            mt: 3,
+            pt: 2,
+            borderTop: '1px solid',
+            borderColor: 'divider'
+          }}>
+            {currentIndex > 0 && (
+              <Button
+                variant="outlined"
+                onClick={() => setCurrentIndex(prev => prev - 1)}
+                sx={{ textTransform: 'none' }}
+              >
+                Previous
+              </Button>
+            )}
+            
+            <Button
+              variant="contained"
+              onClick={handleNext}
+              sx={{
+                textTransform: 'none',
+                ml: 'auto',
+                minWidth: 120
+              }}
+              disabled={
+                currentQuestion.allowMultipleCorrect
+                  ? !userAnswers[currentQuestion.title]?.length
+                  : !userAnswers[currentQuestion.title]
+              }
+            >
+              {currentIndex + 1 === questions.length ? 'Submit Test' : 'Next Question'}
+            </Button>
+          </Box>
         </CardContent>
       </Card>
-
-      <Typography
-        variant="body2"
-        sx={{ mt: 2, textAlign: 'center', color: 'text.secondary' }}
-      >
-        Question {currentIndex + 1} of {questions.length}
-      </Typography>
     </Box>
   );
 };
