@@ -331,47 +331,6 @@ const Profile = () => {
 
       <Paper elevation={3} sx={{ p: 4, maxWidth: 900, mx: "auto", border: "1px solid #ddd" }}>
         <Grid container spacing={3}>
-<<<<<<< HEAD
-          {/* Profile Image */}
-          <Grid item xs={12} sm={3} textAlign="center">
-            <Avatar
-              src={user.image !== "/user.png" ? user.image : undefined}
-              alt="Profile"
-              sx={{ width: 100, height: 100, mx: "auto", fontSize: 32 }}
-            >
-              {user.image === "/user.png"
-                ? user.name
-                  ? user.name
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")
-                      .substring(0, 2)
-                      .toUpperCase()
-                  : "U"
-                : ""}
-            </Avatar>
-            {editing && (
-              <>
-                <Button size="small" onClick={() => fileInputRef.current.click()}>
-                  Upload
-                </Button>
-                <Button size="small" color="error" onClick={removeImage}>
-                  Remove
-                </Button>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  hidden
-                  accept="image/*"
-                  onChange={handleImageChange}
-                />
-              </>
-            )}
-          </Grid>
-          
-
-=======
->>>>>>> 64d1b58509abda55901ec69dc61f8bd1e0acf86b
           {/* Name & Email */}
           <Grid item xs={12}>
             {editing ? (
@@ -395,7 +354,6 @@ const Profile = () => {
                   required
                   type="email"
                 />
-                
               </>
             ) : (
               <>
@@ -403,27 +361,7 @@ const Profile = () => {
                 <Typography color="text.secondary">{user.email || "No Email"}</Typography>
               </>
             )}
-               {/* Edit/Save Button */}
-          <Grid item xs={12} textAlign="right">
-            <Button
-              variant="contained"
-              color={editing ? "success" : "primary"}
-              onClick={() => {
-                if (editing) {
-                  const progress = calculateCompletion();
-                  localStorage.setItem("profileComplete", JSON.stringify(progress === 100));
-                  localStorage.setItem("profileProgress", JSON.stringify(progress));
-                  setEditing(false);
-                } else {
-                  setEditing(true);
-                }
-              }}
-            >
-              {editing ? "Save" : "Edit Profile"}
-            </Button>
           </Grid>
-          </Grid>
-          
 
           {/* Profile Completion */}
           <Grid item xs={12}>
@@ -614,42 +552,8 @@ const Profile = () => {
               )}
             </Paper>
           </Grid>
-<<<<<<< HEAD
-          {/* Resume Upload */}
-<Grid item xs={12}>
-  <Paper variant="outlined" sx={{ p: 2 }}>
-    <Typography variant="h6" gutterBottom>Resume</Typography>
-
-    {user.resume ? (
-      <Box display="flex" alignItems="center" justifyContent="space-between">
-        <Typography>{user.resume}</Typography>
-        {editing && (
-          <Button color="error" onClick={removeResume}>Remove</Button>
-        )}
-      </Box>
-    ) : (
-      editing && (
-        <>
-          <input
-            type="file"
-            ref={resumeInputRef}
-            hidden
-            accept=".pdf,.doc,.docx"
-            onChange={handleResumeUpload}
-          />
-          <Button variant="outlined" onClick={() => resumeInputRef.current.click()}>
-            Upload Resume
-          </Button>
-        </>
-      )
-    )}
-  </Paper>
-</Grid>
-   {/* Edit/Save Button */}
-=======
 
           {/* Edit/Save Button */}
->>>>>>> 64d1b58509abda55901ec69dc61f8bd1e0acf86b
           <Grid item xs={12} textAlign="right">
             {editing ? (
               <Button

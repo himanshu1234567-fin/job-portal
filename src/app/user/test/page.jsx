@@ -241,6 +241,17 @@ const TestPage = () => {
           {score === questions.length ? 'Perfect score! 🎉' : ''}
           {score >= questions.length * 0.7 ? 'Well done!' : ''}
         </Typography>
+         <Button
+          variant="contained"
+          fullWidth
+          sx={{
+            bgcolor: '#fff', color: '#003366', mt: 3, fontWeight: 'bold',
+            '&:hover': { bgcolor: '#e0e0e0' },
+          }}
+          href='/'
+        >
+          Go to Home
+        </Button>
       </Box>
     );
   }
