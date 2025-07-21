@@ -219,6 +219,7 @@ const ProfileForm = () => {
   };
 
   return (
+<<<<<<< HEAD
     <Box sx={{ maxWidth: 800, mx: "auto", p: 3 }}>
       <Button onClick={() => router.push("/user/Userdashboard")} startIcon={<ArrowBackIcon />} variant="" sx={{ mb: 2, mr: 4, color: "#1976d2", borderColor: "#1976d2", "&:hover": { backgroundColor: "#e3f2fd", borderColor: "#1565c0" } }}></Button>
       <Paper elevation={3} sx={{ p: 3 }}>
@@ -254,11 +255,268 @@ const ProfileForm = () => {
             <Button disabled={activeStep === 0} onClick={() => setActiveStep(activeStep - 1)}>Back</Button>
             {activeStep < steps.length - 1 ? (
               <Button variant="contained" onClick={() => setActiveStep(activeStep + 1)}>Next</Button>
+=======
+    <Box p={2} bgcolor="#f5f5f5" minHeight="100vh">
+      <Box display="flex" alignItems="center" mb={2}>
+        <IconButton onClick={() => router.push("/user/Userdashboard")}>
+          <ArrowBackIcon />
+        </IconButton>
+        <Typography variant="h6" ml={1}>
+          Back to Dashboard
+        </Typography>
+      </Box>
+
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+      <Paper elevation={3} sx={{ p: 4, maxWidth: 900, mx: "auto", border: "1px solid #ddd" }}>
+        <Grid container spacing={3}>
+          {/* Name & Email */}
+          <Grid item xs={12}>
+            {editing ? (
+              <>
+                <TextField
+                  label="Full Name"
+                  fullWidth
+                  margin="dense"
+                  name="fullName"
+                  value={user.fullName}
+                  onChange={handleChange}
+                  required
+                />
+                <TextField
+                  label="Email"
+                  fullWidth
+                  margin="dense"
+                  name="email"
+                  value={user.email}
+                  onChange={handleChange}
+                  required
+                  type="email"
+                />
+              </>
+>>>>>>> 33114b60ccb165df49454b4f721267ddac3a8900
             ) : (
               <Button variant="contained" onClick={() => alert("Profile completed!")}>Save</Button>
             )}
+<<<<<<< HEAD
           </Box>
         </Box>
+=======
+          </Grid>
+
+          {/* Profile Completion */}
+          <Grid item xs={12}>
+            <Typography variant="body2" mb={1}>
+              Profile Completion: {calculateCompletion()}%
+            </Typography>
+            <LinearProgress variant="determinate" value={calculateCompletion()} />
+          </Grid>
+
+          {/* Personal Details */}
+          <Grid item xs={12}>
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Typography variant="h6" gutterBottom>
+                Personal Details
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  {editing ? (
+                    <TextField
+                      fullWidth
+                      type="date"
+                      label="Date of Birth"
+                      name="dob"
+                      value={user.dob}
+                      onChange={handleChange}
+                      InputLabelProps={{ shrink: true }}
+                      required
+                    />
+                  ) : (
+                    <Typography>DOB: {user.dob || "Not Set"}</Typography>
+                  )}
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  {editing ? (
+                    <TextField
+                      fullWidth
+                      label="Phone"
+                      name="phone"
+                      value={user.phone}
+                      onChange={handleChange}
+                      inputProps={{ maxLength: 10 }}
+                      required
+                    />
+                  ) : (
+                    <Typography>Phone: {user.phone || "Not Set"}</Typography>
+                  )}
+                </Grid>
+              </Grid>
+            </Paper>
+          </Grid>
+
+          {/* Education - Mapped for multiple entries */}
+          <Grid item xs={12}>
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Typography variant="h6" gutterBottom>
+                Education
+              </Typography>
+              {editing ? (
+                <>
+                  {user.education.map((edu, index) => (
+                    <Box key={index} sx={{ mb: 3, p: 2, border: '1px dashed #ccc', borderRadius: 2 }}>
+                      <Typography variant="subtitle1" gutterBottom>
+                        Degree {index + 1}
+                        {user.education.length > 1 && ( // Only show remove if more than one entry
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => removeEducation(index)}
+                            sx={{ float: 'right' }}
+                          >
+                            <span style={{ fontSize: '1rem' }}>&times;</span> {/* Simple 'x' icon */}
+                          </IconButton>
+                        )}
+                      </Typography>
+                      <Grid container spacing={2}>
+                        {[
+                          { field: "board10", label: "10th Board" },
+                          { field: "percentage10", label: "10th Percentage", type: "number" },
+                          { field: "board12", label: "12th Board" },
+                          { field: "percentage12", label: "12th Percentage", type: "number" },
+                          { field: "college", label: "College/University" },
+                          { field: "collegeDegree", label: "Degree" },
+                          { field: "branch", label: "Branch" },
+                          { field: "passingYear", label: "Passing Year", type: "number" },
+                          { field: "cgpa", label: "CGPA", type: "number" },
+                        ].map((item) => (
+                          <Grid item xs={12} sm={6} key={item.field}>
+                            <TextField
+                              label={item.label}
+                              fullWidth
+                              name={item.field}
+                              value={edu[item.field] || ""}
+                              onChange={(e) => handleEducationChange(index, e)}
+                              type={item.type || "text"}
+                              required={["college", "collegeDegree", "passingYear", "cgpa", "board10", "percentage10", "board12", "percentage12"].includes(item.field)}
+                            />
+                          </Grid>
+                        ))}
+                      </Grid>
+                    </Box>
+                  ))}
+                  <Button variant="outlined" onClick={addEducation} sx={{ mt: 2 }}>
+                    Add Another Degree
+                  </Button>
+                </>
+              ) : (
+                <>
+                  {user.education.length === 0 ? (
+                    <Typography>No education details added.</Typography>
+                  ) : (
+                    user.education.map((edu, index) => (
+                      <Box key={index} sx={{ mb: 2 }}>
+                        <Typography variant="subtitle1">Degree {index + 1}:</Typography>
+                        <Typography>
+                          10th: {edu.board10 || "Not Set"} ({edu.percentage10 || "Not Set"}%)
+                        </Typography>
+                        <Typography>
+                          12th: {edu.board12 || "Not Set"} ({edu.percentage12 || "Not Set"}%)
+                        </Typography>
+                        <Typography>
+                          Graduation: {edu.collegeDegree || "Degree"} in {edu.branch || "Branch"} from {edu.college || "College"} (
+                          {edu.passingYear || "Year"}, CGPA: {edu.cgpa || "N/A"})
+                        </Typography>
+                      </Box>
+                    ))
+                  )}
+                </>
+              )}
+            </Paper>
+          </Grid>
+
+          {/* Skills */}
+          <Grid item xs={12}>
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Typography variant="h6" gutterBottom>Skills</Typography>
+              {editing ? (
+                <TextField
+                  fullWidth
+                  label="Skills (comma-separated)"
+                  name="skills"
+                  value={user.skills}
+                  onChange={handleChange}
+                  placeholder="e.g., JavaScript, Node.js, MongoDB"
+                  required
+                />
+              ) : (
+                <Typography>{user.skills || "Not Set"}</Typography>
+              )}
+            </Paper>
+          </Grid>
+
+          {/* Experience */}
+          <Grid item xs={12}>
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Typography variant="h6" gutterBottom>Experience</Typography>
+              {editing ? (
+                <TextField
+                  fullWidth
+                  label="Experience (Years)"
+                  name="experience"
+                  value={user.experience}
+                  onChange={handleChange}
+                  type="number"
+                  inputProps={{ min: 0 }}
+                  required
+                />
+              ) : (
+                <Typography>{user.experience || "0"} years</Typography>
+              )}
+            </Paper>
+          </Grid>
+
+          {/* Desired Job */}
+          <Grid item xs={12}>
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <Typography variant="h6" gutterBottom>Desired Job</Typography>
+              {editing ? (
+                <TextField
+                  fullWidth
+                  label="Desired Job"
+                  name="desirableJob"
+                  value={user.desirableJob}
+                  onChange={handleChange}
+                  required
+                />
+              ) : (
+                <Typography>{user.desirableJob || "Not Set"}</Typography>
+              )}
+            </Paper>
+          </Grid>
+
+          {/* Edit/Save Button */}
+          <Grid item xs={12} textAlign="right">
+            {editing ? (
+              <Button
+                variant="contained"
+                color="success"
+                onClick={saveProfile}
+                disabled={loading}
+              >
+                {loading ? "Saving..." : "Save Profile"}
+              </Button>
+            ) : (
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => setEditing(true)}
+              >
+                Edit Profile
+              </Button>
+            )}
+          </Grid>
+        </Grid>
+>>>>>>> 33114b60ccb165df49454b4f721267ddac3a8900
       </Paper>
     </Box>
   );
