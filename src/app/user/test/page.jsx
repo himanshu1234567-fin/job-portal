@@ -20,11 +20,7 @@ const TestPage = () => {
       try {
         const token = localStorage.getItem('authToken');
 
-<<<<<<< HEAD
         const response = await fetch('http://localhost:5000/api/questions', {
-=======
-        const res = await fetch('http://localhost:3000/api/questions', {
->>>>>>> 4a26cca3acedecf4b8cae6193b84a40747bab4ec
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -132,42 +128,9 @@ const TestPage = () => {
 
   if (showResult) {
     return (
-<<<<<<< HEAD
       <Box sx={{ maxWidth: 600, mx: 'auto', mt: 8, textAlign: 'center' }}>
         <Typography variant="h4" gutterBottom>Test Completed!</Typography>
         <Typography variant="h6">Your Score: {score} / {questions.length}</Typography>
-=======
-      <Box sx={{ 
-        maxWidth: 600, 
-        mx: 'auto', 
-        p: 4, 
-        textAlign: 'center',
-        boxShadow: 3,
-        borderRadius: 2,
-        mt: 4
-      }}>
-        <Typography variant="h4" gutterBottom sx={{ color: 'primary.main' }}>
-          Test Completed!
-        </Typography>
-        <Typography variant="h5" sx={{ mb: 3 }}>
-          Your Score: {score} / {questions.length}
-        </Typography>
-        <Typography variant="body1" sx={{ mb: 2 }}>
-          {score === questions.length ? 'Perfect score! 🎉' : ''}
-          {score >= questions.length * 0.7 ? 'Well done!' : ''}
-        </Typography>
-         <Button
-          variant="contained"
-          fullWidth
-          sx={{
-            bgcolor: '#fff', color: '#003366', mt: 3, fontWeight: 'bold',
-            '&:hover': { bgcolor: '#e0e0e0' },
-          }}
-          href='/'
-        >
-          Go to Home
-        </Button>
->>>>>>> 33114b60ccb165df49454b4f721267ddac3a8900
       </Box>
     );
   }
