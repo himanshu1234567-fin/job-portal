@@ -44,7 +44,7 @@ export default function SignPage() {
     }
 
     try {
-      const res = await fetch('http://localhost:3000/api/auth/register', {
+      const res = await fetch('http://localhost:5000/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fullName, email, password, confirmPassword }),
@@ -86,7 +86,7 @@ export default function SignPage() {
     }
 
     try {
-      const res = await fetch('http://localhost:3000/api/auth/login', {
+      const res = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: signInEmail, password: signInPassword }),
