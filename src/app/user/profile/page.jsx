@@ -1,560 +1,267 @@
 "use client";
-import {
-  Avatar,
-  Box,
-  Button,
-  Grid,
-  IconButton,
-  Input,
-  Paper,
-  TextField,
-  Typography,
-  Chip,
-  LinearProgress,
-  Stack,
-  Divider,
-} from "@mui/material";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation"; // or useNavigate() from react-router-dom
 
-const defaultProfile = {
-  image: "/user.png",
-  name: "",
-  email: "",
-  dob: "",
-  phone: "",
-  education: {
-    tenth: "",
-    twelfth: "",
-    graduation: {
-      collage_name: "",
-      Graducation: "",
-      branch: "",
-      year: "",
-      CGPA: "",
-    },
-  },
-  skills: [],
-  experience: "",
-  desiredJobs: [],
-  resume: "",
+import React, { useState, useEffect } from "react";
+import {
+  Box, Button, TextField, Typography, Grid, Stepper,
+  Step, StepLabel, IconButton, CircularProgress, Paper,
+  Chip, Switch, FormControlLabel
+} from "@mui/material";
+import { PhotoCamera } from "@mui/icons-material";
+import { useRouter } from "next/navigation";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+
+const steps = ["Personal Details", "Education", "Experience", "Skills & Resume"];
+
+const getStoredData = () => {
+  if (typeof window !== "undefined") {
+    const data = localStorage.getItem("userProfile");
+    return data ? JSON.parse(data) : {};
+  }
+  return {};
 };
 
-const Profile = () => {
-  const [user, setUser] = useState(defaultProfile);
-  const [editing, setEditing] = useState(false);
-  const [inputSkill, setInputSkill] = useState("");
-  const [inputJob, setInputJob] = useState("");
-  const fileInputRef = useRef(null);
-  const resumeInputRef = useRef(null); 
-  const router = useRouter(); // back arrow navigation
+const calculateCompletion = (data) => {
+  const fields = [
+    "name", "email", "dob", "contact", "address",
+    "tenth", "tenthBoard",
+    "twelfth", "twelfthBoard",
+    "college",
+    "passingYear", "degree", "branch",
+    "cgpa", "skillsList", "desirableJobs", "resume"
+  ];
+
+  if (!data.isFresher) {
+    fields.push("companyname", "role", "yearofexperience");
+  }
+
+  const filled = fields.filter((f) => {
+    const val = data[f];
+    if (Array.isArray(val)) return val.length > 0;
+    if (typeof val === "number") return true;
+    return val !== undefined && val !== null && val !== "";
+  });
+
+  return (filled.length / fields.length) * 100;
+};
+
+const ProfileForm = () => {
+  const router = useRouter();
+
+  const [formData, setFormData] = useState({
+    photo: "",
+    name: "",
+    email: "",
+    dob: "",
+    contact: "",
+    address: "",
+    tenth: "",
+    tenthBoard: "",
+    twelfth: "",
+    twelfthBoard: "",
+    college: "",
+    passingYear: "",
+    degree: "",
+    branch: "",
+    cgpa: "",
+    companyname: "",
+    role: "",
+    yearofexperience: "",
+    desirableJobs: [],
+    desirableJobInput: "",
+    skillsList: [],
+    skillInput: "",
+    resume: "",
+    isFresher: false,
+  });
+
+  const [activeStep, setActiveStep] = useState(0);
 
   useEffect(() => {
-    const storedProfile = localStorage.getItem("userProfile");
-    if (storedProfile) setUser(JSON.parse(storedProfile));
+    const stored = getStoredData();
+    if (stored) {
+      setFormData(prev => ({
+        ...prev,
+        ...stored,
+        desirableJobs: stored.desirableJobs || [],
+        skillsList: stored.skillsList || [],
+      }));
+    }
   }, []);
 
   useEffect(() => {
-    localStorage.setItem("userProfile", JSON.stringify(user));
-  }, [user]);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("userProfile", JSON.stringify(formData));
+      localStorage.setItem("profileCompletePercent", calculateCompletion(formData));
+    }
+  }, [formData]);
 
-  const calculateCompletion = () => {
-    const graduationComplete =
-      user.education.graduation.collage_name &&
-      user.education.graduation.branch &&
-      user.education.graduation.year;
-
-    const fields = [
-      user.name,
-      user.email,
-      user.dob,
-      user.phone,
-      user.education.tenth,
-      user.education.twelfth,
-      graduationComplete,
-      user.skills.length > 0,
-      user.experience,
-      user.desiredJobs.length > 0,
-      user.resume.length>0,
-    ];
-    const filled = fields.filter(Boolean).length;
-    return Math.round((filled / fields.length) * 100);
-  };
-
-const handleChange = (e) => {
-  const { name, value } = e.target;
-
-  // Live validation but still allow user to type
-  if (name === "email") {
-    setUser((prev) => ({ ...prev, [name]: value }));
-    return;
-  }
-
-  if (name === "phone") {
-    if (!/^\d{0,10}$/.test(value)) return; // Only allow up to 10 digits
-  }
-
-  setUser((prev) => ({ ...prev, [name]: value }));
-};
-
-  const handleEducationChange = (e) => {
-    const { name, value } = e.target;
-    const gradFields = ["collage_name", "Graducation", "branch", "year", "CGPA"];
-    if (gradFields.includes(name)) {
-      setUser((prev) => ({
-        ...prev,
-        education: {
-          ...prev.education,
-          graduation: {
-            ...prev.education.graduation,
-            [name]: value,
-          },
-        },
-      }));
+  const handleChange = (e) => {
+    const { name, value, files } = e.target;
+    if (name === "photo") {
+      const reader = new FileReader();
+      reader.onloadend = () => setFormData({ ...formData, photo: reader.result });
+      if (files?.[0]) reader.readAsDataURL(files[0]);
+    } else if (name === "resume") {
+      setFormData({ ...formData, resume: files?.[0]?.name || "" });
     } else {
-      setUser((prev) => ({
+      setFormData({ ...formData, [name]: value });
+    }
+  };
+
+  const handleAddJob = () => {
+    const trimmed = formData.desirableJobInput.trim();
+    if (trimmed && !formData.desirableJobs.includes(trimmed)) {
+      setFormData(prev => ({
         ...prev,
-        education: {
-          ...prev.education,
-          [name]: value,
-        },
+        desirableJobs: [...prev.desirableJobs, trimmed],
+        desirableJobInput: "",
       }));
     }
   };
 
-  const addSkill = () => {
-    if (inputSkill.trim()) {
-      setUser((prev) => ({ ...prev, skills: [...prev.skills, inputSkill.trim()] }));
-      setInputSkill("");
-    }
-  };
-
-  const removeSkill = (index) => {
-    const updated = [...user.skills];
+  const handleRemoveJob = (index) => {
+    const updated = [...formData.desirableJobs];
     updated.splice(index, 1);
-    setUser({ ...user, skills: updated });
+    setFormData({ ...formData, desirableJobs: updated });
   };
 
-  const addJob = () => {
-    if (inputJob.trim()) {
-      setUser((prev) => ({
+  const handleAddSkill = () => {
+    const trimmed = formData.skillInput.trim();
+    if (trimmed && !formData.skillsList.includes(trimmed)) {
+      setFormData(prev => ({
         ...prev,
-        desiredJobs: [...prev.desiredJobs, inputJob.trim()],
+        skillsList: [...prev.skillsList, trimmed],
+        skillInput: "",
       }));
-      setInputJob("");
     }
   };
 
-  const removeJob = (index) => {
-    const updated = [...user.desiredJobs];
+  const handleRemoveSkill = (index) => {
+    const updated = [...formData.skillsList];
     updated.splice(index, 1);
-    setUser({ ...user, desiredJobs: updated });
+    setFormData({ ...formData, skillsList: updated });
   };
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const imageUrl = URL.createObjectURL(file);
-      setUser((prev) => ({ ...prev, image: imageUrl }));
+  const renderStepContent = (step) => {
+    switch (step) {
+      case 0:
+        return (
+          <>
+            <Grid item xs={12}><TextField fullWidth label="Name" name="name" value={formData.name} onChange={handleChange} /></Grid>
+            <Grid item xs={12}><TextField fullWidth label="Email" name="email" value={formData.email} onChange={handleChange} /></Grid>
+            <Grid item xs={12}><TextField fullWidth label="Date of Birth" name="dob" type="date" value={formData.dob} onChange={handleChange} InputLabelProps={{ shrink: true }} /></Grid>
+            <Grid item xs={12}><TextField fullWidth label="Contact" name="contact" value={formData.contact} onChange={handleChange} /></Grid>
+            <Grid item xs={12}><TextField fullWidth label="Address" name="address" value={formData.address} onChange={handleChange} /></Grid>
+          </>
+        );
+      case 1:
+        return (
+          <>
+            <Grid item xs={6}><TextField fullWidth label="10th %" name="tenth" value={formData.tenth} onChange={handleChange} /></Grid>
+            <Grid item xs={6}><TextField fullWidth placeholder="10th Board" name="tenthBoard" value={formData.tenthBoard} onChange={handleChange} /></Grid>
+            <Grid item xs={6}><TextField fullWidth label="12th %" name="twelfth" value={formData.twelfth} onChange={handleChange} /></Grid>
+            <Grid item xs={6}><TextField fullWidth placeholder="12th Board" name="twelfthBoard" value={formData.twelfthBoard} onChange={handleChange} /></Grid>
+            <Grid item xs={12}><TextField fullWidth label="College" name="college" value={formData.college} onChange={handleChange} /></Grid>
+            <Grid item xs={6}><TextField fullWidth label="Degree" name="degree" value={formData.degree} onChange={handleChange} /></Grid>
+            <Grid item xs={6}><TextField fullWidth label="Branch" name="branch" value={formData.branch} onChange={handleChange} /></Grid>
+            <Grid item xs={6}><TextField fullWidth label="Passing Year" name="passingYear" value={formData.passingYear} onChange={handleChange} /></Grid>
+            <Grid item xs={6}><TextField fullWidth label="CGPA" name="cgpa" value={formData.cgpa} onChange={handleChange} /></Grid>
+          </>
+        );
+      case 2:
+        return (
+          <>
+            <Grid item xs={12}><FormControlLabel control={<Switch checked={formData.isFresher} onChange={(e) => setFormData({ ...formData, isFresher: e.target.checked })} />}  label={formData.isFresher ? "I am a Fresher" : "I have Experience"} /></Grid>
+            {!formData.isFresher && (
+              <>
+                <Grid item xs={12}><TextField fullWidth label="Company Name" name="companyname" value={formData.companyname} onChange={handleChange} /></Grid>
+                <Grid item xs={12}><TextField fullWidth label="Role" name="role" value={formData.role} onChange={handleChange} /></Grid>
+                <Grid item xs={12}><TextField fullWidth label="Years of Experience" name="yearofexperience" value={formData.yearofexperience} onChange={handleChange} /></Grid>
+              </>
+            )}
+            <Grid item xs={9}><TextField fullWidth label="Add Desirable Job" value={formData.desirableJobInput} onChange={(e) => setFormData({ ...formData, desirableJobInput: e.target.value })} /></Grid>
+            <Grid item xs={3}><Button variant="contained" fullWidth sx={{ height: "100%" }} onClick={handleAddJob}>Add</Button></Grid>
+            <Grid item xs={12}>
+              <Box display="flex" flexWrap="wrap" gap={1}>
+                {formData.desirableJobs.map((job, i) => (
+                  <Chip key={i} label={job} onDelete={() => handleRemoveJob(i)} color="primary" variant="outlined" />
+                ))}
+              </Box>
+            </Grid>
+          </>
+        );
+      case 3:
+        return (
+          <>
+            <Grid item xs={9}><TextField fullWidth label="Add Skill" value={formData.skillInput} onChange={(e) => setFormData({ ...formData, skillInput: e.target.value })} /></Grid>
+            <Grid item xs={3}><Button variant="contained" fullWidth sx={{ height: "100%" }} onClick={handleAddSkill}>Add</Button></Grid>
+            <Grid item xs={12}>
+              <Box display="flex" flexWrap="wrap" gap={1}>
+                {formData.skillsList.map((skill, i) => (
+                  <Chip key={i} label={skill} onDelete={() => handleRemoveSkill(i)} color="success" variant="outlined" />
+                ))}
+              </Box>
+            </Grid>
+            <Grid item xs={12}>
+              <Button variant="outlined" component="label">
+                Upload Resume
+                <input hidden type="file" name="resume" onChange={handleChange} />
+              </Button>
+              {formData.resume && (
+                <Typography variant="body2" sx={{ mt: 1 }}>Uploaded: {formData.resume}</Typography>
+              )}
+            </Grid>
+          </>
+        );
+      default:
+        return null;
     }
   };
-
-  const removeImage = () => {
-    setUser((prev) => ({ ...prev, image: "/user.png" }));
-  };
-
-  const progress = calculateCompletion();
-
-  const handleResumeUpload = (e) => {
-  const file = e.target.files[0];
-  if (file) {
-    setUser((prev) => ({ ...prev, resume: file.name }));
-  }
-};
-
-const removeResume = () => {
-  setUser((prev) => ({ ...prev, resume: "" }));
-};
 
   return (
-    <Box p={2} bgcolor="#f5f5f5" minHeight="100vh">
-      <Box display="flex" alignItems="center" mb={2}>
-        <IconButton onClick={() => router.push("/user/Userdashboard")}>
-          <ArrowBackIcon />
-        </IconButton>
-        <Typography variant="h6" ml={1}>
-          Back to Dashboard
-        </Typography>
-      </Box>
-
-      <Paper elevation={3} sx={{ p: 4, maxWidth: 900, mx: "auto", border: "1px solid #ddd" }}>
-        <Grid container spacing={3}>
-          {/* Profile Image */}
-          <Grid item xs={12} sm={3} textAlign="center">
-            <Avatar
-              src={user.image !== "/user.png" ? user.image : undefined}
-              alt="Profile"
-              sx={{ width: 100, height: 100, mx: "auto", fontSize: 32 }}
-            >
-              {user.image === "/user.png"
-                ? user.name
-                  ? user.name
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")
-                      .substring(0, 2)
-                      .toUpperCase()
-                  : "U"
-                : ""}
-            </Avatar>
-            {editing && (
-              <>
-                <Button size="small" onClick={() => fileInputRef.current.click()}>
-                  Upload
-                </Button>
-                <Button size="small" color="error" onClick={removeImage}>
-                  Remove
-                </Button>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  hidden
-                  accept="image/*"
-                  onChange={handleImageChange}
-                />
-              </>
-            )}
-          </Grid>
-          
-
-          {/* Name & Email */}
-          <Grid item xs={12} sm={9}>
-            {editing ? (
-              <>
-                <TextField
-                  label="Full Name"
-                  fullWidth
-                  margin="dense"
-                  name="name"
-                  value={user.name}
-                  onChange={handleChange}
-                  required
-                />
-                <TextField
-                  label="Email (@gmail.com)"
-                  fullWidth
-                  margin="dense"
-                  name="email"
-                  value={user.email}
-                  onChange={handleChange}
-                  required
-                />
-                
-              </>
+    <Box sx={{ maxWidth: 800, mx: "auto", p: 3 }}>
+      <Button onClick={() => router.push("/user/Userdashboard")} startIcon={<ArrowBackIcon />} variant="" sx={{ mb: 2, mr: 4, color: "#1976d2", borderColor: "#1976d2", "&:hover": { backgroundColor: "#e3f2fd", borderColor: "#1565c0" } }}></Button>
+      <Paper elevation={3} sx={{ p: 3 }}>
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 4 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <Box sx={{ position: "relative", width: 80, height: 80 }}>
+              <img src={formData.photo || "/default-avatar.png"} alt="Profile" style={{ width: 80, height: 80, borderRadius: "50%", objectFit: "cover", border: "2px solid #1976d2" }} />
+              <input accept="image/*" type="file" id="photo-upload" name="photo" onChange={handleChange} style={{ display: "none" }} />
+              <label htmlFor="photo-upload">
+                <IconButton component="span" sx={{ position: "absolute", bottom: -10, right: -10, backgroundColor: "white", boxShadow: 1, border: "1px solid #ccc" }}>
+                  <PhotoCamera fontSize="small" />
+                </IconButton>
+              </label>
+            </Box>
+            <Box>
+              <Typography variant="h6">Hello, {formData.name || "Candidate"}</Typography>
+              {formData.email && <Typography variant="body2" color="text.secondary">{formData.email}</Typography>}
+            </Box>
+          </Box>
+          <Box sx={{ position: "relative", display: "inline-flex", mr: 2 }}>
+            <CircularProgress variant="determinate" value={calculateCompletion(formData)} size={80} thickness={4} />
+            <Box sx={{ position: "absolute", top: 0, left: 0, bottom: 0, right: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Typography variant="caption" color="text.secondary">{`${Math.round(calculateCompletion(formData))}%`}</Typography>
+            </Box>
+          </Box>
+        </Box>
+        <Stepper activeStep={activeStep} alternativeLabel>
+          {steps.map((label) => <Step key={label}><StepLabel>{label}</StepLabel></Step>)}
+        </Stepper>
+        <Box sx={{ mt: 4 }}>
+          <Grid container spacing={2}>{renderStepContent(activeStep)}</Grid>
+          <Box sx={{ mt: 3, display: "flex", justifyContent: "space-between" }}>
+            <Button disabled={activeStep === 0} onClick={() => setActiveStep(activeStep - 1)}>Back</Button>
+            {activeStep < steps.length - 1 ? (
+              <Button variant="contained" onClick={() => setActiveStep(activeStep + 1)}>Next</Button>
             ) : (
-              <>
-                <Typography variant="h5">{user.name || "No Name"}</Typography>
-                <Typography color="text.secondary">{user.email || "No Email"}</Typography>
-              </>
+              <Button variant="contained" onClick={() => alert("Profile completed!")}>Save</Button>
             )}
-               {/* Edit/Save Button */}
-          <Grid item xs={12} textAlign="right">
-            <Button
-              variant="contained"
-              color={editing ? "success" : "primary"}
-              onClick={() => {
-                if (editing) {
-                  const progress = calculateCompletion();
-                  localStorage.setItem("profileComplete", JSON.stringify(progress === 100));
-                  localStorage.setItem("profileProgress", JSON.stringify(progress));
-                  setEditing(false);
-                } else {
-                  setEditing(true);
-                }
-              }}
-            >
-              {editing ? "Save" : "Edit Profile"}
-            </Button>
-          </Grid>
-          </Grid>
-          
-
-          {/* Progress */}
-          <Grid item xs={12}>
-            <Typography variant="body2" mb={1}>
-              Profile Completion: {progress}%
-            </Typography>
-            <LinearProgress variant="determinate" value={progress} />
-          </Grid>
-
-          {/* Personal Details */}
-          <Grid item xs={12}>
-            <Paper variant="outlined" sx={{ p: 2 }}>
-              <Typography variant="h6" gutterBottom>
-                Personal Details
-              </Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
-                  {editing ? (
-                    <TextField
-                      fullWidth
-                      type="date"
-                      label="Date of Birth"
-                      name="dob"
-                      value={user.dob}
-                      onChange={handleChange}
-                      InputLabelProps={{ shrink: true }}
-                    />
-                  ) : (
-                    <Typography>DOB: {user.dob || "Not Set"}</Typography>
-                  )}
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  {editing ? (
-                    <TextField
-                      fullWidth
-                      label="Phone"
-                      name="phone"
-                      value={user.phone}
-                      onChange={handleChange}
-                    />
-                  ) : (
-                    <Typography>Phone: {user.phone || "Not Set"}</Typography>
-                  )}
-                </Grid>
-              </Grid>
-            </Paper>
-          </Grid>
-
-          {/* Education */}
-          <Grid item xs={12}>
-            <Paper variant="outlined" sx={{ p: 2 }}>
-              <Typography variant="h6" gutterBottom>
-                Education
-              </Typography>
-              {editing ? (
-                <Grid container spacing={2}>
-                  <Grid item xs={6}>
-                    <TextField
-                      label="10th %"
-                      fullWidth
-                      name="tenth"
-                      value={user.education.tenth}
-                      onChange={handleEducationChange}
-                    />
-                  </Grid>
-                  <Grid item xs={6}>
-                    <TextField
-                      label="12th %"
-                      fullWidth
-                      name="twelfth"
-                      value={user.education.twelfth}
-                      onChange={handleEducationChange}
-                    />
-                  </Grid>
-                  <Grid item xs={6}>
-                    <TextField
-                      label="College"
-                      name="collage_name"
-                      fullWidth
-                      value={user.education.graduation.collage_name}
-                      onChange={handleEducationChange}
-                    />
-                  </Grid>
-                  <Grid item xs={6}>
-                    <TextField
-                      label="Degree"
-                      name="Graducation"
-                      fullWidth
-                      value={user.education.graduation.Graducation}
-                      onChange={handleEducationChange}
-                    />
-                  </Grid>
-                  <Grid item xs={6}>
-                    <TextField
-                      label="Branch"
-                      name="branch"
-                      fullWidth
-                      value={user.education.graduation.branch}
-                      onChange={handleEducationChange}
-                    />
-                  </Grid>
-                  <Grid item xs={6}>
-                    <TextField
-                      label="Passing Year"
-                      name="year"
-                      fullWidth
-                      value={user.education.graduation.year}
-                      onChange={handleEducationChange}
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TextField
-                      label="CGPA / Percentage"
-                      name="CGPA"
-                      fullWidth
-                      value={user.education.graduation.CGPA}
-                      onChange={handleEducationChange}
-                    />
-                  </Grid>
-                </Grid>
-              ) : (
-                <>
-                  <Typography>10th: {user.education.tenth || "Not Set"}</Typography>
-                  <Typography>12th: {user.education.twelfth || "Not Set"}</Typography>
-                  <Typography>
-                    Graduation: {user.education.graduation.Graducation || "Degree"} in{" "}
-                    {user.education.graduation.branch || "Branch"} from{" "}
-                    {user.education.graduation.collage_name || "College"} (
-                    {user.education.graduation.year || "Year"}, CGPA:{" "}
-                    {user.education.graduation.CGPA || "N/A"})
-                  </Typography>
-                </>
-              )}
-            </Paper>
-          </Grid>
-
-          {/* Skills */}
-          <Grid item xs={12}>
-            <Paper variant="outlined" sx={{ p: 2 }}>
-              <Typography variant="h6" gutterBottom>
-                Skills
-              </Typography>
-              <Stack direction="row" spacing={1} flexWrap="wrap">
-                {user.skills.map((skill, idx) => (
-                  <Chip
-                    key={idx}
-                    label={skill}
-                    onDelete={editing ? () => removeSkill(idx) : undefined}
-                    color="primary"
-                    sx={{ my: 0.5 }}
-                  />
-                ))}
-              </Stack>
-              {editing && (
-                <Stack direction="row" spacing={2} mt={2}>
-                  <TextField
-                    label="Add Skill"
-                    value={inputSkill}
-                    onChange={(e) => setInputSkill(e.target.value)}
-                  />
-                  <Button variant="contained" onClick={addSkill}>
-                    Add
-                  </Button>
-                </Stack>
-              )}
-            </Paper>
-          </Grid>
-
-          {/* Experience */}
-          <Grid item xs={12}>
-            <Paper variant="outlined" sx={{ p: 2 }}>
-              <Typography variant="h6" gutterBottom>
-                Experience
-              </Typography>
-              {editing ? (
-                <TextField
-                  fullWidth
-                  multiline
-                  rows={3}
-                  name="experience"
-                  value={user.experience}
-                  onChange={handleChange}
-                />
-              ) : (
-                <Typography>{user.experience || "Not Set"}</Typography>
-              )}
-            </Paper>
-          </Grid>
-
-          {/* Desired Jobs */}
-          <Grid item xs={12}>
-            <Paper variant="outlined" sx={{ p: 2 }}>
-              <Typography variant="h6" gutterBottom>
-                Desired Jobs
-              </Typography>
-              <Stack spacing={1}>
-                {user.desiredJobs.map((job, idx) => (
-                  <Box key={idx} display="flex" alignItems="center">
-                    <Typography>{job}</Typography>
-                    {editing && (
-                      <IconButton size="small" onClick={() => removeJob(idx)}>
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    )}
-                  </Box>
-                ))}
-              </Stack>
-              {editing && (
-                <Stack direction="row" spacing={2} mt={2}>
-                  <TextField
-                    label="Add Job"
-                    value={inputJob}
-                    onChange={(e) => setInputJob(e.target.value)}
-                  />
-                  <Button variant="contained" onClick={addJob} color="success">
-                    Add
-                  </Button>
-                </Stack>
-              )}
-            </Paper>
-          </Grid>
-          {/* Resume Upload */}
-<Grid item xs={12}>
-  <Paper variant="outlined" sx={{ p: 2 }}>
-    <Typography variant="h6" gutterBottom>Resume</Typography>
-
-    {user.resume ? (
-      <Box display="flex" alignItems="center" justifyContent="space-between">
-        <Typography>{user.resume}</Typography>
-        {editing && (
-          <Button color="error" onClick={removeResume}>Remove</Button>
-        )}
-      </Box>
-    ) : (
-      editing && (
-        <>
-          <input
-            type="file"
-            ref={resumeInputRef}
-            hidden
-            accept=".pdf,.doc,.docx"
-            onChange={handleResumeUpload}
-          />
-          <Button variant="outlined" onClick={() => resumeInputRef.current.click()}>
-            Upload Resume
-          </Button>
-        </>
-      )
-    )}
-  </Paper>
-</Grid>
-   {/* Edit/Save Button */}
-          <Grid item xs={12} textAlign="right">
-            <Button
-              variant="contained"
-              color={editing ? "success" : "primary"}
-              onClick={() => {
-                if (editing) {
-                  const progress = calculateCompletion();
-                  localStorage.setItem("profileComplete", JSON.stringify(progress === 100));
-                  localStorage.setItem("profileProgress", JSON.stringify(progress));
-                  setEditing(false);
-                } else {
-                  setEditing(true);
-                }
-              }}
-            >
-              {editing ? "Save" : "Edit Profile"}
-            </Button>
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
       </Paper>
     </Box>
   );
 };
 
-export default Profile;
+export default ProfileForm;

@@ -76,7 +76,7 @@ export default function SignPage() {
       return setError('Please enter both email and password.');
 
     try {
-      const res = await apiFetch('/api/auth/login', {
+      const res = await fetch('http://localhost:3000/api/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email: signInEmail, password: signInPassword }),
       });
