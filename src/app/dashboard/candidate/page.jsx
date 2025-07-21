@@ -1,5 +1,6 @@
 'use client';
 
+import React, { useEffect, useState } from 'react';
 import {
   Typography,
   Paper,
@@ -11,54 +12,57 @@ import {
   TableContainer,
   Button,
   Box,
+  CircularProgress
 } from '@mui/material';
-import React from 'react';
+import axios from 'axios';
+// 1. IMPORT YOUR MODAL (adjust the path if it's different)
+import UserDetailsModal from '../userDetailsPopup/page.jsx';
 
 export default function CandidatesPage() {
-  const candidates = [
-    {
-    id: "1",
-    name: "Tushar Namdev",
-    email: "tushar@example.com",
-    position: "Frontend Developer",
-    status: "Active",
-    experience: "2 years",
-    profileCompletion: 80,
-    testAssigned: "React Test",
-    testScore: "7/10",
-    resumeStatus: "Uploaded",
-    paymentStatus: "Paid",
-    hired : "Yes",
-  },
-  {
-    id: "2",
-    name: "Rohit Verma",
-    email: "rohit@example.com",
-    position: "Backend Developer",
-    status: "Inactive",
-    experience: "1 year",
-    profileCompletion: 60,
-    testAssigned: "Node.js Test",
-    testScore: "5/10",
-    resumeStatus: "Not Uploaded",
-    paymentStatus: "Pending",
-    hired : "No",
-  },
-  {
-      id: "3",
-    name: "Anita Sharma",
-    email: "anita@example.com",
-    position: "HR",
-    status: "Active",
-    experience: "3 years",
-    profileCompletion: 90,
-    testAssigned: "HR Basics",
-    testScore: "9/10",
-    resumeStatus: "Uploaded",
-    paymentStatus: "Paid",
-    hired : "Yes",
-  },
-  ];
+  const [candidates, setCandidates] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // 2. State for controlling the modal
+  const [selectedCandidate, setSelectedCandidate] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  useEffect(() => {
+    const fetchCandidates = async () => {
+      try {
+        const token = localStorage.getItem('authToken');
+        const response = await axios.get(
+          'http://localhost:3000/api/admin-dashboard',
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setCandidates(response.data.dashboards || []);
+      } catch (err) {
+        console.error('Error fetching candidates:', err.response?.data || err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCandidates();
+  }, []);
+
+  // 3. Functions to handle opening and closing the modal
+  const handleViewDetails = (candidate) => {
+    setSelectedCandidate(candidate);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedCandidate(null);
+  };
+
+  if (loading) {
+    return (
+      <Box sx={{ p: 4, textAlign: 'center' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ p: 4, backgroundColor: '#f8fafc', minHeight: '100vh' }}>
@@ -79,50 +83,65 @@ export default function CandidatesPage() {
                 <TableCell>Email</TableCell>
                 <TableCell>Role</TableCell>
                 <TableCell>Experience</TableCell>
-                <TableCell>Assigned Test</TableCell>
-                <TableCell>Test Score</TableCell>
                 <TableCell>Profile Completion</TableCell>
+                <TableCell>Test Score</TableCell>
                 <TableCell>Resume Status</TableCell>
                 <TableCell>Actions</TableCell>
               </TableRow>
             </TableHead>
 
             <TableBody>
-              {candidates.map((candidate) => (
-                <TableRow key={candidate.id}>
-                  <TableCell>{candidate.name}</TableCell>
-                  <TableCell>{candidate.email}</TableCell>
-                  <TableCell>{candidate.position}</TableCell>
-                  <TableCell>{candidate.experience}</TableCell>
-                  <TableCell>{candidate.testAssigned}</TableCell>
-                  <TableCell>{candidate.testScore}</TableCell>
-                  <TableCell>{candidate.profileCompletion}%</TableCell>
-                  <TableCell>{candidate.resumeStatus}</TableCell>
-                  <TableCell>
-                    <Button 
-                     size="small" 
-                     variant="outlined"
-                     onClick={() =>
-                      alert(
-                      `User ID: ${candidate.id}
-                     Name: ${candidate.name}
-                     Email: ${candidate.email}
-                     Position: ${candidate.position}
-                     Status: ${candidate.status}
-                     Test Score: ${candidate.testScore}`
-                     )
-                    }
-                    >
-                    View
-                   </Button>
+              {candidates.map(candidate => {
+                const name = candidate.fullName || candidate.name || '--';
+                const email = candidate.email || '--';
+                const role =
+                  typeof candidate.desirableJob === 'string'
+                    ? candidate.desirableJob
+                    : candidate.desirableJob?.name || '--';
+                const experience =
+                  candidate.experience != null
+                    ? `${candidate.experience} year${candidate.experience > 1 ? 's' : ''}`
+                    : '--';
+                const profileCompletion =
+                  candidate.profileCompletion != null
+                    ? `${candidate.profileCompletion}%`
+                    : '--';
+                const testScore = candidate.testScore?.points != null ? `${candidate.testScore.points}%` : '--';
+                const resumeStatus = candidate.resumeStatus || '--';
 
-                  </TableCell>
-                </TableRow>
-              ))}
+                return (
+                  <TableRow key={candidate._id}>
+                    <TableCell>{name}</TableCell>
+                    <TableCell>{email}</TableCell>
+                    <TableCell>{role}</TableCell>
+                    <TableCell>{experience}</TableCell>
+                    <TableCell>{profileCompletion}</TableCell>
+                    <TableCell>{testScore}</TableCell>
+                    <TableCell>{resumeStatus}</TableCell>
+                    <TableCell>
+                      {/* 4. The button now opens the modal */}
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => handleViewDetails(candidate)}
+                      >
+                        View
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </TableContainer>
       </Paper>
+
+      {/* 5. The Modal component is here, ready to be displayed */}
+      <UserDetailsModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        user={selectedCandidate}
+      />
     </Box>
   );
 }
