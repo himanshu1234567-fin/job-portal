@@ -1,322 +1,261 @@
 "use client";
+
+import React, { useState, useEffect } from "react";
 import {
-  Box,
-  Button,
-  Grid,
-  IconButton,
-  Paper,
-  TextField,
-  Typography,
-  LinearProgress,
-  Alert,
+  Box, Button, TextField, Typography, Grid, Stepper,
+  Step, StepLabel, IconButton, CircularProgress, Paper,
+  Chip, Switch, FormControlLabel
 } from "@mui/material";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { useEffect, useState } from "react";
+import { PhotoCamera } from "@mui/icons-material";
 import { useRouter } from "next/navigation";
-import axios from "axios";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
-// Defines a blank education entry structure
-const blankEducation = {
-  board10: "",
-  percentage10: "",
-  board12: "",
-  percentage12: "",
-  college: "",
-  collegeDegree: "",
-  branch: "",
-  passingYear: "",
-  cgpa: "",
+const steps = ["Personal Details", "Education", "Experience", "Skills & Resume"];
+
+const getStoredData = () => {
+  if (typeof window !== "undefined") {
+    const data = localStorage.getItem("userProfile");
+    return data ? JSON.parse(data) : {};
+  }
+  return {};
 };
 
-// Default profile structure, education is now an array
-const defaultProfile = {
-  fullName: "",
-  email: "",
-  dob: "",
-  phone: "",
-  education: [], // Initialize as an empty array
-  skills: "",
-  experience: "",
-  desirableJob: "",
-};
+const calculateCompletion = (data) => {
+  const fields = [
+    "name", "email", "dob", "contact", "address",
+    "tenth", "tenthBoard",
+    "twelfth", "twelfthBoard",
+    "college",
+    "passingYear", "degree", "branch",
+    "cgpa", "skillsList", "desirableJobs", "resume"
+  ];
 
-const Profile = () => {
-  const [user, setUser] = useState(defaultProfile);
-  const [editing, setEditing] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [candidateId, setCandidateId] = useState(null);
-  const [currentUserId, setCurrentUserId] = useState(null);
-
-  const router = useRouter();
-
-  // 🔄 Fetch profile from backend on mount
-  useEffect(() => {
-    let isMounted = true;
-
-    const fetchProfile = async () => {
-      setLoading(true);
-      setError("");
-      const token = localStorage.getItem("authToken");
-
-      if (!token) {
-        setError("You are not logged in. Please log in to view your profile.");
-        setLoading(false);
-        return;
-      }
-
-      try {
-        // 1️⃣ Fetch the logged-in user's ID from the token
-        const userIdRes = await axios.get("http://localhost:5000/api/candidates/user-id", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const fetchedUserId = userIdRes.data.userId;
-        if (isMounted) {
-          setCurrentUserId(fetchedUserId);
-        }
-        console.log("Logged-in user ID from /user-id:", fetchedUserId);
-
-        // 2️⃣ Try to fetch the candidate profile for this user
-        const meRes = await axios.get("http://localhost:5000/api/candidates/me", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (!isMounted) return;
-
-        const candidateData = meRes.data;
-        console.log("Fetched candidate data:", candidateData);
-
-        setCandidateId(candidateData._id);
-
-        const mergedData = {
-          ...defaultProfile,
-          ...candidateData,
-          // If education array is empty or not provided, add a blank one for the UI
-          education: (Array.isArray(candidateData.education) && candidateData.education.length > 0)
-            ? candidateData.education
-            : [blankEducation], // Ensure at least one blank entry for editing
-          skills: Array.isArray(candidateData.skills)
-            ? candidateData.skills.join(", ")
-            : "",
-          dob: candidateData.dob ? new Date(candidateData.dob).toISOString().split('T')[0] : "",
-        };
-
-        setUser(mergedData);
-        setEditing(false);
-
-      } catch (err) {
-        if (isMounted) {
-          if (err.response && err.response.status === 404) {
-            setError("No candidate profile found. Please create your profile.");
-            setUser({ ...defaultProfile, education: [blankEducation] }); // Start with one blank education for creation
-            setEditing(true);
-          } else {
-            setError(err.response?.data?.message || err.message || "Failed to load profile.");
-          }
-          console.error("Error fetching profile:", err);
-        }
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-
-    fetchProfile();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  const calculateCompletion = () => {
-    // Check if at least one education entry is complete
-    const anyEducationComplete = user.education.some(edu =>
-      edu.college && edu.collegeDegree && edu.passingYear && edu.cgpa
-    );
-
-    const fields = [
-      user.fullName,
-      user.email,
-      user.dob,
-      user.phone,
-      anyEducationComplete, // Check if any education is complete
-      user.skills,
-      user.experience,
-      user.desirableJob,
-    ];
-
-    // For each education entry, add its board and percentage fields to the completion check
-    user.education.forEach(edu => {
-        fields.push(edu.board10, edu.percentage10, edu.board12, edu.percentage12);
-    });
-
-    const filled = fields.filter(Boolean).length;
-    return Math.round((filled / fields.length) * 100);
-  };
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    if (name === "phone") {
-      if (!/^\d{0,10}$/.test(value)) return;
-    }
-    setUser((prev) => ({ ...prev, [name]: value }));
-  };
-
-  // Handles changes for a specific education entry by index
-  const handleEducationChange = (index, e) => {
-    const { name, value } = e.target;
-    const updatedEducation = user.education.map((edu, i) => {
-      if (i === index) {
-        return { ...edu, [name]: value };
-      }
-      return edu;
-    });
-    setUser((prev) => ({ ...prev, education: updatedEducation }));
-  };
-
-  // Adds a new blank education entry
-  const addEducation = () => {
-    setUser((prev) => ({
-      ...prev,
-      education: [...prev.education, { ...blankEducation }],
-    }));
-  };
-
-  // Removes an education entry by index
-  const removeEducation = (index) => {
-    setUser((prev) => ({
-      ...prev,
-      education: prev.education.filter((_, i) => i !== index),
-    }));
-  };
-
-  const saveProfile = async () => {
-    const token = localStorage.getItem("authToken");
-    if (!token) {
-      setError("No authentication token found. Please sign in.");
-      return;
-    }
-
-    // Basic validation
-    if (!user.fullName || !user.email || !user.phone || !user.dob || !user.desirableJob) {
-      setError("Please fill in all basic required fields: Full Name, Email, Phone, Date of Birth, Desired Job.");
-      return;
-    }
-
-    // Validate each education entry
-    const isEducationValid = user.education.every(edu =>
-      edu.college && edu.collegeDegree && edu.passingYear && edu.cgpa &&
-      edu.board10 && edu.percentage10 !== "" && edu.board12 && edu.percentage12 !== ""
-    );
-
-    if (editing && !isEducationValid) {
-        setError("Please ensure all required education fields are completed for each entry.");
-        return;
-    }
-
-
-    try {
-      setLoading(true);
-      setError("");
-
-      // Prepare education data: convert percentages/cgpa to numbers
-      const preparedEducationArray = user.education.map(edu => ({
-        ...edu,
-        percentage10: edu.percentage10 ? Number(edu.percentage10) : 0,
-        percentage12: edu.percentage12 ? Number(edu.percentage12) : 0,
-        passingYear: edu.passingYear ? Number(edu.passingYear) : 0,
-        cgpa: edu.cgpa ? Number(edu.cgpa) : 0,
-      }));
-
-
-      const preparedUser = {
-        fullName: user.fullName,
-        email: user.email,
-        dob: user.dob,
-        phone: user.phone,
-        education: preparedEducationArray, // This is already an array
-        skills: user.skills
-          ? user.skills.split(",").map((s) => s.trim()).filter(Boolean)
-          : [],
-        experience: user.experience ? Number(user.experience) : 0,
-        desirableJob: user.desirableJob,
-      };
-
-      let res;
-      if (candidateId) {
-        console.log("Updating profile for candidate ID:", candidateId);
-        res = await axios.put(
-          `http://localhost:5000/api/candidates/${candidateId}`,
-          preparedUser,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-      } else {
-        if (!currentUserId) {
-          setError("User ID not available for profile creation. Please log in again.");
-          setLoading(false);
-          return;
-        }
-        console.log("Creating new profile for user ID:", currentUserId);
-        res = await axios.post(
-          "http://localhost:5000/api/candidates",
-          { ...preparedUser, userId: currentUserId },
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-        setCandidateId(res.data.candidate._id);
-      }
-
-      // Update local state with response data, converting skills back to string
-      const updatedUser = {
-        ...(res.data.candidate || res.data),
-        skills: Array.isArray(res.data.candidate?.skills || res.data.skills)
-          ? (res.data.candidate?.skills || res.data.skills).join(", ")
-          : "",
-        dob: (res.data.candidate?.dob || res.data.dob) ? new Date(res.data.candidate?.dob || res.data.dob).toISOString().split('T')[0] : "",
-        // Ensure education is an array and set it directly
-        education: Array.isArray(res.data.candidate?.education || res.data.education)
-          ? (res.data.candidate?.education || res.data.education)
-          : [blankEducation] // Fallback to blank if somehow empty
-      };
-
-      setUser(updatedUser);
-
-      const progress = calculateCompletion();
-      localStorage.setItem("profileComplete", JSON.stringify(progress === 100));
-      localStorage.setItem("profileProgress", JSON.stringify(progress));
-
-      setEditing(false);
-      setError("Profile saved successfully!");
-    } catch (err) {
-      console.error("Save error:", err);
-      setError(
-        err.response?.data?.message ||
-        err.response?.data?.error ||
-        err.message ||
-        "Failed to save profile"
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
-        <Typography>Loading profile...</Typography>
-      </Box>
-    );
+  if (!data.isFresher) {
+    fields.push("companyname", "role", "yearofexperience");
   }
 
+  const filled = fields.filter((f) => {
+    const val = data[f];
+    if (Array.isArray(val)) return val.length > 0;
+    if (typeof val === "number") return true;
+    return val !== undefined && val !== null && val !== "";
+  });
+
+  return (filled.length / fields.length) * 100;
+};
+
+const ProfileForm = () => {
+  const router = useRouter();
+
+  const [formData, setFormData] = useState({
+    photo: "",
+    name: "",
+    email: "",
+    dob: "",
+    contact: "",
+    address: "",
+    tenth: "",
+    tenthBoard: "",
+    twelfth: "",
+    twelfthBoard: "",
+    college: "",
+    passingYear: "",
+    degree: "",
+    branch: "",
+    cgpa: "",
+    companyname: "",
+    role: "",
+    yearofexperience: "",
+    desirableJobs: [],
+    desirableJobInput: "",
+    skillsList: [],
+    skillInput: "",
+    resume: "",
+    isFresher: false,
+  });
+
+  const [activeStep, setActiveStep] = useState(0);
+
+  useEffect(() => {
+    const stored = getStoredData();
+    if (stored) {
+      setFormData(prev => ({
+        ...prev,
+        ...stored,
+        desirableJobs: stored.desirableJobs || [],
+        skillsList: stored.skillsList || [],
+      }));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("userProfile", JSON.stringify(formData));
+      localStorage.setItem("profileCompletePercent", calculateCompletion(formData));
+    }
+  }, [formData]);
+
+  const handleChange = (e) => {
+    const { name, value, files } = e.target;
+    if (name === "photo") {
+      const reader = new FileReader();
+      reader.onloadend = () => setFormData({ ...formData, photo: reader.result });
+      if (files?.[0]) reader.readAsDataURL(files[0]);
+    } else if (name === "resume") {
+      setFormData({ ...formData, resume: files?.[0]?.name || "" });
+    } else {
+      setFormData({ ...formData, [name]: value });
+    }
+  };
+
+  const handleAddJob = () => {
+    const trimmed = formData.desirableJobInput.trim();
+    if (trimmed && !formData.desirableJobs.includes(trimmed)) {
+      setFormData(prev => ({
+        ...prev,
+        desirableJobs: [...prev.desirableJobs, trimmed],
+        desirableJobInput: "",
+      }));
+    }
+  };
+
+  const handleRemoveJob = (index) => {
+    const updated = [...formData.desirableJobs];
+    updated.splice(index, 1);
+    setFormData({ ...formData, desirableJobs: updated });
+  };
+
+  const handleAddSkill = () => {
+    const trimmed = formData.skillInput.trim();
+    if (trimmed && !formData.skillsList.includes(trimmed)) {
+      setFormData(prev => ({
+        ...prev,
+        skillsList: [...prev.skillsList, trimmed],
+        skillInput: "",
+      }));
+    }
+  };
+
+  const handleRemoveSkill = (index) => {
+    const updated = [...formData.skillsList];
+    updated.splice(index, 1);
+    setFormData({ ...formData, skillsList: updated });
+  };
+
+  const renderStepContent = (step) => {
+    switch (step) {
+      case 0:
+        return (
+          <>
+            <Grid item xs={12}><TextField fullWidth label="Name" name="name" value={formData.name} onChange={handleChange} /></Grid>
+            <Grid item xs={12}><TextField fullWidth label="Email" name="email" value={formData.email} onChange={handleChange} /></Grid>
+            <Grid item xs={12}><TextField fullWidth label="Date of Birth" name="dob" type="date" value={formData.dob} onChange={handleChange} InputLabelProps={{ shrink: true }} /></Grid>
+            <Grid item xs={12}><TextField fullWidth label="Contact" name="contact" value={formData.contact} onChange={handleChange} /></Grid>
+            <Grid item xs={12}><TextField fullWidth label="Address" name="address" value={formData.address} onChange={handleChange} /></Grid>
+          </>
+        );
+      case 1:
+        return (
+          <>
+            <Grid item xs={6}><TextField fullWidth label="10th %" name="tenth" value={formData.tenth} onChange={handleChange} /></Grid>
+            <Grid item xs={6}><TextField fullWidth placeholder="10th Board" name="tenthBoard" value={formData.tenthBoard} onChange={handleChange} /></Grid>
+            <Grid item xs={6}><TextField fullWidth label="12th %" name="twelfth" value={formData.twelfth} onChange={handleChange} /></Grid>
+            <Grid item xs={6}><TextField fullWidth placeholder="12th Board" name="twelfthBoard" value={formData.twelfthBoard} onChange={handleChange} /></Grid>
+            <Grid item xs={12}><TextField fullWidth label="College" name="college" value={formData.college} onChange={handleChange} /></Grid>
+            <Grid item xs={6}><TextField fullWidth label="Degree" name="degree" value={formData.degree} onChange={handleChange} /></Grid>
+            <Grid item xs={6}><TextField fullWidth label="Branch" name="branch" value={formData.branch} onChange={handleChange} /></Grid>
+            <Grid item xs={6}><TextField fullWidth label="Passing Year" name="passingYear" value={formData.passingYear} onChange={handleChange} /></Grid>
+            <Grid item xs={6}><TextField fullWidth label="CGPA" name="cgpa" value={formData.cgpa} onChange={handleChange} /></Grid>
+          </>
+        );
+      case 2:
+        return (
+          <>
+            <Grid item xs={12}><FormControlLabel control={<Switch checked={formData.isFresher} onChange={(e) => setFormData({ ...formData, isFresher: e.target.checked })} />}  label={formData.isFresher ? "I am a Fresher" : "I have Experience"} /></Grid>
+            {!formData.isFresher && (
+              <>
+                <Grid item xs={12}><TextField fullWidth label="Company Name" name="companyname" value={formData.companyname} onChange={handleChange} /></Grid>
+                <Grid item xs={12}><TextField fullWidth label="Role" name="role" value={formData.role} onChange={handleChange} /></Grid>
+                <Grid item xs={12}><TextField fullWidth label="Years of Experience" name="yearofexperience" value={formData.yearofexperience} onChange={handleChange} /></Grid>
+              </>
+            )}
+            <Grid item xs={9}><TextField fullWidth label="Add Desirable Job" value={formData.desirableJobInput} onChange={(e) => setFormData({ ...formData, desirableJobInput: e.target.value })} /></Grid>
+            <Grid item xs={3}><Button variant="contained" fullWidth sx={{ height: "100%" }} onClick={handleAddJob}>Add</Button></Grid>
+            <Grid item xs={12}>
+              <Box display="flex" flexWrap="wrap" gap={1}>
+                {formData.desirableJobs.map((job, i) => (
+                  <Chip key={i} label={job} onDelete={() => handleRemoveJob(i)} color="primary" variant="outlined" />
+                ))}
+              </Box>
+            </Grid>
+          </>
+        );
+      case 3:
+        return (
+          <>
+            <Grid item xs={9}><TextField fullWidth label="Add Skill" value={formData.skillInput} onChange={(e) => setFormData({ ...formData, skillInput: e.target.value })} /></Grid>
+            <Grid item xs={3}><Button variant="contained" fullWidth sx={{ height: "100%" }} onClick={handleAddSkill}>Add</Button></Grid>
+            <Grid item xs={12}>
+              <Box display="flex" flexWrap="wrap" gap={1}>
+                {formData.skillsList.map((skill, i) => (
+                  <Chip key={i} label={skill} onDelete={() => handleRemoveSkill(i)} color="success" variant="outlined" />
+                ))}
+              </Box>
+            </Grid>
+            <Grid item xs={12}>
+              <Button variant="outlined" component="label">
+                Upload Resume
+                <input hidden type="file" name="resume" onChange={handleChange} />
+              </Button>
+              {formData.resume && (
+                <Typography variant="body2" sx={{ mt: 1 }}>Uploaded: {formData.resume}</Typography>
+              )}
+            </Grid>
+          </>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
+<<<<<<< HEAD
+    <Box sx={{ maxWidth: 800, mx: "auto", p: 3 }}>
+      <Button onClick={() => router.push("/user/Userdashboard")} startIcon={<ArrowBackIcon />} variant="" sx={{ mb: 2, mr: 4, color: "#1976d2", borderColor: "#1976d2", "&:hover": { backgroundColor: "#e3f2fd", borderColor: "#1565c0" } }}></Button>
+      <Paper elevation={3} sx={{ p: 3 }}>
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 4 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <Box sx={{ position: "relative", width: 80, height: 80 }}>
+              <img src={formData.photo || "/default-avatar.png"} alt="Profile" style={{ width: 80, height: 80, borderRadius: "50%", objectFit: "cover", border: "2px solid #1976d2" }} />
+              <input accept="image/*" type="file" id="photo-upload" name="photo" onChange={handleChange} style={{ display: "none" }} />
+              <label htmlFor="photo-upload">
+                <IconButton component="span" sx={{ position: "absolute", bottom: -10, right: -10, backgroundColor: "white", boxShadow: 1, border: "1px solid #ccc" }}>
+                  <PhotoCamera fontSize="small" />
+                </IconButton>
+              </label>
+            </Box>
+            <Box>
+              <Typography variant="h6">Hello, {formData.name || "Candidate"}</Typography>
+              {formData.email && <Typography variant="body2" color="text.secondary">{formData.email}</Typography>}
+            </Box>
+          </Box>
+          <Box sx={{ position: "relative", display: "inline-flex", mr: 2 }}>
+            <CircularProgress variant="determinate" value={calculateCompletion(formData)} size={80} thickness={4} />
+            <Box sx={{ position: "absolute", top: 0, left: 0, bottom: 0, right: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Typography variant="caption" color="text.secondary">{`${Math.round(calculateCompletion(formData))}%`}</Typography>
+            </Box>
+          </Box>
+        </Box>
+        <Stepper activeStep={activeStep} alternativeLabel>
+          {steps.map((label) => <Step key={label}><StepLabel>{label}</StepLabel></Step>)}
+        </Stepper>
+        <Box sx={{ mt: 4 }}>
+          <Grid container spacing={2}>{renderStepContent(activeStep)}</Grid>
+          <Box sx={{ mt: 3, display: "flex", justifyContent: "space-between" }}>
+            <Button disabled={activeStep === 0} onClick={() => setActiveStep(activeStep - 1)}>Back</Button>
+            {activeStep < steps.length - 1 ? (
+              <Button variant="contained" onClick={() => setActiveStep(activeStep + 1)}>Next</Button>
+=======
     <Box p={2} bgcolor="#f5f5f5" minHeight="100vh">
       <Box display="flex" alignItems="center" mb={2}>
         <IconButton onClick={() => router.push("/user/Userdashboard")}>
@@ -355,12 +294,14 @@ const Profile = () => {
                   type="email"
                 />
               </>
+>>>>>>> 33114b60ccb165df49454b4f721267ddac3a8900
             ) : (
-              <>
-                <Typography variant="h5">{user.fullName || "No Name"}</Typography>
-                <Typography color="text.secondary">{user.email || "No Email"}</Typography>
-              </>
+              <Button variant="contained" onClick={() => alert("Profile completed!")}>Save</Button>
             )}
+<<<<<<< HEAD
+          </Box>
+        </Box>
+=======
           </Grid>
 
           {/* Profile Completion */}
@@ -575,9 +516,10 @@ const Profile = () => {
             )}
           </Grid>
         </Grid>
+>>>>>>> 33114b60ccb165df49454b4f721267ddac3a8900
       </Paper>
     </Box>
   );
 };
 
-export default Profile;
+export default ProfileForm;

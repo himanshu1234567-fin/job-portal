@@ -12,114 +12,94 @@ import {
   Alert,
 } from '@mui/material';
 import { useRouter } from 'next/navigation';
+import { apiFetch } from '../utils/api';
+
+const initialForm = {
+  fullName: '',
+  email: '',
+  password: '',
+  confirmPassword: '',
+  signInEmail: '',
+  signInPassword: '',
+};
 
 export default function SignPage() {
   const [tab, setTab] = useState(0);
+  const [formData, setFormData] = useState(initialForm);
   const [error, setError] = useState('');
   const router = useRouter();
 
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setError('');
+  };
 
-  const [signInEmail, setSignInEmail] = useState('');
-  const [signInPassword, setSignInPassword] = useState('');
-
-  const handleTabChange = (event, newValue) => {
+  const handleTabChange = (_, newValue) => {
     setTab(newValue);
     setError('');
   };
 
   const handleSignUp = async (e) => {
     e.preventDefault();
-    setError('');
+    const { fullName, email, password, confirmPassword } = formData;
 
-    if (!fullName || !email || !password || !confirmPassword) {
+    if (!fullName || !email || !password || !confirmPassword)
       return setError('Please fill all fields.');
-    }
 
-    if (password !== confirmPassword) {
+    if (password !== confirmPassword)
       return setError('Passwords do not match.');
-    }
 
     try {
+<<<<<<< HEAD
       const res = await fetch('http://localhost:5000/api/auth/register', {
+=======
+      const res = await apiFetch('/api/auth/register', {
+>>>>>>> 4a26cca3acedecf4b8cae6193b84a40747bab4ec
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fullName, email, password, confirmPassword }),
+        body: JSON.stringify({ fullName, email, password }),
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || 'Registration failed');
-      }
-
-      const { user, token } = data;
-
-      if (!user || !token) {
-        throw new Error('Invalid response from server.');
-      }
-
+      const { user, token } = res;
       localStorage.setItem('currentUser', JSON.stringify(user));
       localStorage.setItem('authToken', token);
       localStorage.setItem('justSignedIn', 'true');
 
-      setFullName('');
-      setEmail('');
-      setPassword('');
-      setConfirmPassword('');
-
+      setFormData(initialForm);
       router.push('/');
     } catch (err) {
-      setError(err.message || 'Registration failed.');
+      setError(err?.message || 'Registration failed');
     }
   };
 
   const handleSignIn = async (e) => {
     e.preventDefault();
-    setError('');
+    const { signInEmail, signInPassword } = formData;
 
-    if (!signInEmail || !signInPassword) {
+    if (!signInEmail || !signInPassword)
       return setError('Please enter both email and password.');
-    }
 
     try {
       const res = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: signInEmail, password: signInPassword }),
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || 'Login failed');
-      }
-
-      const { user, token } = data;
-
-      if (!user || !token) {
-        throw new Error('Invalid response from server.');
-      }
-
+      const { user, token } = res;
       localStorage.setItem('currentUser', JSON.stringify(user));
       localStorage.setItem('authToken', token);
       localStorage.setItem('justSignedIn', 'true');
 
-      setSignInEmail('');
-      setSignInPassword('');
-
+      setFormData(initialForm);
       router.push('/');
     } catch (err) {
-      setError(err.message || 'Login failed.');
+      setError(err?.message || 'Login failed');
     }
   };
 
   return (
     <Container maxWidth="sm" sx={{ mt: 6 }}>
-      <Box sx={{ textAlign: 'center', mb: 4 }}>
+      <Box textAlign="center" mb={4}>
         <Typography variant="h4" gutterBottom>
           {tab === 0 ? 'Sign In' : 'Sign Up'}
         </Typography>
@@ -138,65 +118,71 @@ export default function SignPage() {
       {tab === 0 ? (
         <Box component="form" onSubmit={handleSignIn} noValidate sx={{ mt: 1 }}>
           <TextField
+            name="signInEmail"
             margin="normal"
             required
             fullWidth
             label="Email Address"
             type="email"
-            value={signInEmail}
-            onChange={(e) => setSignInEmail(e.target.value)}
+            value={formData.signInEmail}
+            onChange={handleChange}
           />
           <TextField
+            name="signInPassword"
             margin="normal"
             required
             fullWidth
             label="Password"
             type="password"
-            value={signInPassword}
-            onChange={(e) => setSignInPassword(e.target.value)}
+            value={formData.signInPassword}
+            onChange={handleChange}
           />
-          <Button type="submit" fullWidth variant="contained" color="primary" sx={{ mt: 3 }}>
+          <Button type="submit" fullWidth variant="contained" sx={{ mt: 3 }}>
             Sign In
           </Button>
         </Box>
       ) : (
         <Box component="form" onSubmit={handleSignUp} noValidate sx={{ mt: 1 }}>
           <TextField
+            name="fullName"
             margin="normal"
             required
             fullWidth
             label="Full Name"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
+            value={formData.fullName}
+            onChange={handleChange}
           />
           <TextField
+            name="email"
             margin="normal"
             required
             fullWidth
             label="Email Address"
             type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            value={formData.email}
+            onChange={handleChange}
           />
           <TextField
+            name="password"
             margin="normal"
             required
             fullWidth
             label="Password"
             type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            value={formData.password}
+            onChange={handleChange}
           />
           <TextField
+            name="confirmPassword"
             margin="normal"
             required
             fullWidth
             label="Confirm Password"
             type="password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
+            value={formData.confirmPassword}
+            onChange={handleChange}
           />
-          <Button type="submit" fullWidth variant="contained" color="primary" sx={{ mt: 3 }}>
+          <Button type="submit" fullWidth variant="contained" sx={{ mt: 3 }}>
             Sign Up
           </Button>
         </Box>
