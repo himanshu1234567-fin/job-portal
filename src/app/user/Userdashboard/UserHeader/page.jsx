@@ -76,14 +76,14 @@ export default function CreativeUserHeader() {
             Welcome back, {user.name || "User"} 👋
           </Typography>
           {profileProgress === 100 ? (
-  <Typography variant="body1" mt={1}>
-    🎉 Your profile is fully completed!
-  </Typography>
-) : (
-  <Typography variant="body1" mt={1}>
-    You are just {100 - profileProgress}% away from profile completion.
-  </Typography>
-)}
+            <Typography variant="body1" mt={1}>
+              🎉 Your profile is fully completed!
+            </Typography>
+          ) : (
+            <Typography variant="body1" mt={1}>
+              You are just {100 - profileProgress}% away from profile completion.
+            </Typography>
+          )}
 
         </Box>
 

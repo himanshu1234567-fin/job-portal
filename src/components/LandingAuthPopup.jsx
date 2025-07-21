@@ -53,7 +53,7 @@ export default function LandingAuthPopup({ open, onSuccess, onClose }) {
       return setError('Passwords do not match.');
 
     try {
-      const res = await fetch('http://localhost:3000/api/auth/register', {
+      const res = await fetch('http://localhost:5000/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fullName, email, password, confirmPassword }),
@@ -82,7 +82,7 @@ export default function LandingAuthPopup({ open, onSuccess, onClose }) {
       return setError('Please enter both email and password.');
 
     try {
-      const res = await fetch('http://localhost:3000/api/auth/login', {
+      const res = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: signInEmail, password: signInPassword }),
