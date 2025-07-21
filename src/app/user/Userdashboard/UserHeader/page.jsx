@@ -28,8 +28,8 @@ export default function CreativeUserHeader() {
 
   // Fetch profile progress from localStorage
   useEffect(() => {
-    const progress = JSON.parse(localStorage.getItem("profileProgress")) || 0;
-    setProfileProgress(progress);
+    const progress = parseFloat(localStorage.getItem("profileCompletePercent")) || 0;
+    setProfileProgress(Math.round(progress));
   }, []);
 
   // Fetch user data from backend
@@ -76,15 +76,14 @@ export default function CreativeUserHeader() {
             Welcome back, {user.name || "User"} 👋
           </Typography>
           {profileProgress === 100 ? (
-  <Typography variant="body1" mt={1}>
-    🎉 Your profile is fully completed!
-  </Typography>
-) : (
-  <Typography variant="body1" mt={1}>
-    You are just {100 - profileProgress}% away from profile completion.
-  </Typography>
-)}
-
+            <Typography variant="body1" mt={1}>
+              🎉 Your profile is fully completed!
+            </Typography>
+          ) : (
+            <Typography variant="body1" mt={1}>
+              You are just {100 - profileProgress}% away from profile completion.
+            </Typography>
+          )}
         </Box>
 
         <Box textAlign="right">
