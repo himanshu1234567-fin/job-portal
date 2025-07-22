@@ -2,82 +2,11 @@
 
 import React, { useEffect, useState } from 'react';
 import {
-  AppBar, Toolbar, IconButton, Button, Typography, Box, Container, Drawer,
-  Avatar, CircularProgress, Paper, Divider, Grid, Checkbox, Chip
+  Box, Container, CircularProgress, Paper, Divider, Grid, Checkbox, Chip, Typography, Button
 } from '@mui/material';
-import MenuIcon from '@mui/icons-material/Menu';
-import CompleteProfilePopup from '../components/PopupCard';
+import CompleteProfilePopup from '../components/PopupCard'; // Assuming this is your popup component
 import LandingAuthPopup from '../components/LandingAuthPopup';
-
-const navigation = [
-  { name: 'Jobs', href: '#' },
-  { name: 'Headhunters', href: '#' },
-  { name: 'Resume', href: '#' },
-  { name: 'Coaching', href: '#' },
-];
-
-const ProfileAvatarWithProgress = ({ user, progress }) => {
-  return (
-    <Box sx={{ 
-      position: 'relative', 
-      display: 'inline-flex',
-      '&:hover': {
-        '& .progress-percent': {
-          opacity: 1,
-        }
-      }
-    }}>
-      <Avatar
-        alt={user.fullName}
-        sx={{
-          width: 32,
-          height: 32,
-          bgcolor: 'primary.main',
-          fontSize: '0.875rem',
-        }}
-      >
-        {user.fullName?.[0]}
-      </Avatar>
-      {progress < 100 && (
-        <>
-          <CircularProgress
-            variant="determinate"
-            value={progress}
-            size={38}
-            thickness={4}
-            sx={{
-              color: 'primary.main',
-              position: 'absolute',
-              top: -3,
-              left: -3,
-              zIndex: 1,
-            }}
-          />
-          <Box
-            className="progress-percent"
-            sx={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'primary.main',
-              fontSize: '0.6rem',
-              fontWeight: 'bold',
-              opacity: 0,
-              transition: 'opacity 0.3s',
-            }}
-          >
-            {progress}%
-          </Box>
-        </>
-      )}
-    </Box>
-  );
-};
+import Navbar from '../components/Navbar';
 
 export default function ResumeBuilder() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -88,50 +17,55 @@ export default function ResumeBuilder() {
   const [authLoading, setAuthLoading] = useState(true);
   const [showLandingAuthPopup, setShowLandingAuthPopup] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(false);
-  const [profileCompletion, setProfileCompletion] = useState(0);
 
-  const calculateProfileCompletion = (profile) => {
-    if (!profile) return 0;
+  /**
+   * Checks if the user's profile is complete based on the backend schema.
+   * @param {object} profile - The candidate profile object from the API.
+   * @returns {boolean} - True if all required fields are filled, false otherwise.
+   */
+  const isProfileComplete = (profile) => {
+    // 1. If the profile object itself is missing, it's incomplete.
+    if (!profile) return false;
 
-    const fieldsToCheck = [
-      'fullName', 'email', 'dob', 'phone',
-      'education', 'skills', 'experience', 'desirableJob'
+    // 2. Define required fields from the schema.
+    const topLevelRequiredFields = ['fullName', 'email', 'dob', 'phone', 'desirableJob'];
+    const educationRequiredFields = [
+      'college', 'collegeDegree', 'passingYear', 'cgpa',
+      'board10', 'percentage10', 'board12', 'percentage12'
     ];
 
-    let completedFields = 0;
-
-    fieldsToCheck.forEach(field => {
-      if (profile[field]) {
-        if (Array.isArray(profile[field])) {
-          if (profile[field].length > 0) completedFields++;
-        } else {
-          completedFields++;
-        }
-      }
-    });
-
-    if (profile.education && profile.education.length > 0) {
-      const edu = profile.education[0];
-      const eduFields = [
-        'college', 'collegeDegree', 'branch',
-        'passingYear', 'cgpa',
-        'board10', 'percentage10', 'board12', 'percentage12'
-      ];
-      
-      eduFields.forEach(field => {
-        if (edu[field] !== undefined && edu[field] !== null && edu[field] !== '') {
-          completedFields++;
-        }
-      });
+    // 3. Check top-level string/date fields.
+    for (const field of topLevelRequiredFields) {
+      if (!profile[field]) return false; // Checks for null, undefined, or empty string
     }
 
-    const totalFields = fieldsToCheck.length + 10;
-    return Math.round((completedFields / totalFields) * 100);
+    // 4. Check 'experience' field specifically (0 is a valid value).
+    if (profile.experience === null || profile.experience === undefined) {
+        return false;
+    }
+
+    // 5. Check that required arrays exist and are not empty.
+    if (!Array.isArray(profile.skills) || profile.skills.length === 0) {
+      return false;
+    }
+    if (!Array.isArray(profile.education) || profile.education.length === 0) {
+      return false;
+    }
+
+    // 6. Check the nested fields in the first education record.
+    const educationRecord = profile.education[0];
+    for (const field of educationRequiredFields) {
+        // A value of 0 is valid for number fields, so check for null/undefined.
+        // An empty string is falsy, so !educationRecord[field] works for strings.
+      if (educationRecord[field] === null || educationRecord[field] === undefined || educationRecord[field] === '') {
+        return false;
+      }
+    }
+
+    // ✅ If all checks pass, the profile is complete.
+    return true;
   };
 
-  const isProfileComplete = (profile) => {
-    return calculateProfileCompletion(profile) === 100;
-  };
 
   useEffect(() => {
     const storedUser = localStorage.getItem('currentUser');
@@ -156,7 +90,7 @@ export default function ResumeBuilder() {
   useEffect(() => {
     const fetchCandidateProfile = async () => {
       const token = localStorage.getItem('authToken');
-      if (!token) return;
+      if (!token || !currentUser) return; // Ensure currentUser is available
 
       setLoadingProfile(true);
       try {
@@ -168,9 +102,11 @@ export default function ResumeBuilder() {
         });
 
         const data = await response.json();
-        const completion = calculateProfileCompletion(data);
-        setProfileCompletion(completion);
-        setShowPopup(completion === 0);
+        const isComplete = isProfileComplete(data);
+        
+        // Show the popup if the profile is NOT complete
+        setShowPopup(!isComplete);
+        
       } catch (err) {
         console.error('Error fetching candidate profile:', err);
       } finally {
@@ -186,7 +122,7 @@ export default function ResumeBuilder() {
   useEffect(() => {
     const fetchTasks = async () => {
       const token = localStorage.getItem('authToken');
-      if (!token) return;
+      if (!token || !currentUser) return;
 
       setLoadingTasks(true);
       try {
@@ -204,12 +140,12 @@ export default function ResumeBuilder() {
         else if (Array.isArray(data.data)) fetchedTasks = data.data;
         else if (data.questions) fetchedTasks = data.questions;
 
-        // Transform the API data to match our expected task structure
         const transformedTasks = fetchedTasks.map(task => ({
           title: task.title || task.question || 'Untitled Task',
           question: task.question || task.title || 'No question text provided',
           duration: task.duration || 60,
-          options: task.options || []
+          options: task.options || [],
+          _id: task._id // Keep track of ID for links
         }));
 
         setTasks(transformedTasks);
@@ -222,7 +158,6 @@ export default function ResumeBuilder() {
 
     if (currentUser) {
       fetchTasks();
-      // Set up polling to fetch tasks every 30 seconds
       const intervalId = setInterval(fetchTasks, 30000);
       return () => clearInterval(intervalId);
     }
@@ -235,6 +170,7 @@ export default function ResumeBuilder() {
     localStorage.removeItem('authToken');
     setCurrentUser(null);
     setShowLandingAuthPopup(true);
+    setShowPopup(false); // Hide the popup immediately on logout
   };
 
   const handleClosePopup = () => {
@@ -254,46 +190,12 @@ export default function ResumeBuilder() {
 
   return (
     <Box sx={{ flexGrow: 1 }}>
-      <AppBar position="static" color="transparent" elevation={0}>
-        <Toolbar sx={{ justifyContent: 'space-between' }}>
-          <Typography variant="h6" component="div" sx={{ fontWeight: 'bold' }}>
-            jobMyleads
-          </Typography>
-
-          <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 2, alignItems: 'center' }}>
-            {navigation.map((item) => (
-              <Button key={item.name} href={item.href} color="inherit">{item.name}</Button>
-            ))}
-
-            {currentUser ? (
-              <>
-                <a href="/user/profile" style={{ textDecoration: 'none' }}>
-                  <ProfileAvatarWithProgress user={currentUser} progress={profileCompletion} />
-                </a>
-                <Button onClick={handleLogout} color="error">Logout</Button>
-              </>
-            ) : (
-              <>
-                <Button onClick={() => setShowLandingAuthPopup(true)} variant="outlined">
-                  Sign up now
-                </Button>
-                <Button onClick={() => setShowLandingAuthPopup(true)} variant="contained">
-                  Log in
-                </Button>
-              </>
-            )}
-          </Box>
-
-          <IconButton
-            color="inherit"
-            edge="end"
-            onClick={handleDrawerToggle}
-            sx={{ display: { md: 'none' } }}
-          >
-            <MenuIcon />
-          </IconButton>
-        </Toolbar>
-      </AppBar>
+      <Navbar 
+        currentUser={currentUser}
+        handleLogout={handleLogout}
+        handleDrawerToggle={handleDrawerToggle}
+        setShowLandingAuthPopup={setShowLandingAuthPopup}
+      />
 
       {!currentUser ? (
         <Box sx={{
@@ -390,19 +292,20 @@ export default function ResumeBuilder() {
                   variant="contained" 
                   size="large"
                   sx={{ mt: 2 }}
+                  href='/user/jobsearch'
                 >
                   Start your search
                 </Button>
               </Paper>
 
-              {/* Tasks Section (MODIFIED) */}
+              {/* Tasks Section */}
               <Paper sx={{
                 p: 2,
                 bgcolor: '#f5faff',
                 borderRadius: 2,
                 display: 'flex',
                 flexDirection: 'column',
-                mb: 3 // Added margin-bottom
+                mb: 3
               }}>
                 <Typography variant="h6" fontWeight="bold" sx={{ color: '#003366', mb: 2 }}>
                   Tasks
@@ -420,10 +323,10 @@ export default function ResumeBuilder() {
                 ) : (
                   <Box sx={{ overflowY: 'auto', maxHeight: '250px' }}>
                     {tasks.map((task, idx) => (
-                      <Box key={idx} sx={{ mb: 2 }}>
-                        <a href={`/user/test?taskId=${task._id || idx}`} style={{ textDecoration: 'none' }}>
+                      <Box key={task._id || idx} sx={{ mb: 2 }}>
+                        <a href={`/user/test?taskId=${task._id}`} style={{ textDecoration: 'none' }}>
                           <Typography variant="subtitle1" fontWeight="bold" sx={{ color: '#003366' }}>
-                            {task.title || task.question || 'Untitled Task'}
+                            {task.title}
                           </Typography>
                         </a>
                         <Typography variant="body2" color="text.secondary">
@@ -436,7 +339,7 @@ export default function ResumeBuilder() {
                 )}
               </Paper>
               
-              {/* Quick Links (MOVED HERE) */}
+              {/* Quick Links */}
               <Paper sx={{ p: 3, mb: 3, borderRadius: 2, boxShadow: 1 }}>
                 <Typography variant="h6" component="h2" gutterBottom sx={{ fontWeight: 'bold' }}>
                   Quick links
@@ -488,6 +391,7 @@ export default function ResumeBuilder() {
         </Container>
       )}
 
+      {/* The CompleteProfilePopup will now open if the profile is incomplete */}
       <CompleteProfilePopup open={showPopup} onClose={handleClosePopup} />
       <LandingAuthPopup
         open={showLandingAuthPopup && !currentUser}

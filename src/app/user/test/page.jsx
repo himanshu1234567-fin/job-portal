@@ -165,9 +165,9 @@ const TestPage = () => {
                           variant="contained" 
                           size="large"
                           sx={{ mt: 2 }}
-                          href='/'
+                          href='/user/ResumeBuilder'
                         >
-                          Back to Home
+                          Build your AI Resume
                         </Button>
       </Box>
     );

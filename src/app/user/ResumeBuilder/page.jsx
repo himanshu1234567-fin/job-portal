@@ -7,220 +7,809 @@ import {
   Button,
   Card,
   CardContent,
-  CardMedia,
   Dialog,
   DialogContent,
   DialogTitle,
   Grid,
   Typography,
   IconButton,
+  Divider,
+  TextField,
+  Paper,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  FormControlLabel,
+  Checkbox,
+  Stepper,
+  Step,
+  StepLabel,
+  FormHelperText,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
+import DownloadIcon from '@mui/icons-material/Download';
 import axios from 'axios';
+// import { jsPDF } from 'jspdf';
+// import html2canvas from 'html2canvas';
 
 const templates = [
-  {
-    id: 'modern',
-    name: 'Modern',
-    description: 'Clean, sleek, and modern layout suited for tech roles.',
-    preview: '/preview-modern.png',
-  },
-  {
-    id: 'classic',
-    name: 'Classic',
-    description: 'Traditional layout ideal for government or academic jobs.',
-    preview: '/preview-classic.png',
-  },
+  { id: 'modern', name: 'Modern', description: 'Clean, sleek, and modern layout suited for tech roles.', preview: '/preview-modern.png' },
+  { id: 'classic', name: 'Classic', description: 'Traditional layout ideal for government or academic jobs.', preview: '/preview-classic.png' },
 ];
 
 const plans = [
   { id: 'plan1', name: '₹99 - 5 Resumes (14 Days)', price: 9900, limit: 5, validityDays: 14 },
-  { id: 'plan2', name: '₹199 - 10 Resumes (28 Days)', price: 19900, limit: 10, validityDays: 28 },
+  { id: 'plan2', name: '₹199 - 10 Resumes (30 Days)', price: 19900, limit: 10, validityDays: 30 },
   { id: 'plan3', name: '₹499 - 50 Resumes (6 Months)', price: 49900, limit: 50, validityDays: 180 },
   { id: 'plan4', name: '₹999 - Unlimited Resumes (1 Year)', price: 99900, limit: Infinity, validityDays: 365 },
 ];
 
+const steps = ['Upload Resume', 'Contact Information', 'Job Title', 'Educational Background', 'Work Experience', 'Skills', 'Choose Template'];
+
 export default function ResumeBuilderPage() {
   const router = useRouter();
+  const [activeStep, setActiveStep] = useState(0);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
-  const [isPaid, setIsPaid] = useState(false);
-  const [profile, setProfile] = useState(null);
   const [showPlans, setShowPlans] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
-
-  const testScore = 80;
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [contactInfo, setContactInfo] = useState({
+    firstName: '',
+    lastName: '',
+    location: '',
+    zipCode: '',
+    country: '',
+    phone: '',
+    email: '',
+    linkedIn: '',
+  });
+  const [jobTitle, setJobTitle] = useState('');
+  const [languages, setLanguages] = useState([]);
+  const [selectedLanguage, setSelectedLanguage] = useState('English (United States)');
+  const [education, setEducation] = useState([]);
+  const [workExperience, setWorkExperience] = useState([]);
+  const [mustHaveSkills, setMustHaveSkills] = useState([]);
+  const [selectedSkills, setSelectedSkills] = useState([]);
+  const [customSkill, setCustomSkill] = useState('');
+  const [resumeFile, setResumeFile] = useState(null);
+  const [noResume, setNoResume] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem('userProfile');
-    if (stored) {
-      setProfile(JSON.parse(stored));
-    } else {
-      router.push('/user/profile');
-    }
-  }, []);
+    const fetchProfile = async () => {
+      try {
+        setLoading(true);
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+          setError('No authentication token found. Please log in.');
+          router.push('/login');
+          return;
+        }
 
-  useEffect(() => {
-    if (profile && testScore < 75) {
-      router.push('/user/profile');
+        const response = await axios.get('http://localhost:5000/api/candidates/me', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        const data = response.data;
+        setProfile({
+          fullName: data.fullName || '',
+          email: data.email || '',
+          phone: data.phone || '',
+          education: data.education || [],
+          skills: data.skills || [],
+          experience: data.experience || [],
+          desirableJob: data.desirableJob || '',
+        });
+
+        setContactInfo({
+          firstName: data.fullName ? data.fullName.split(' ')[0] : '',
+          lastName: data.fullName ? data.fullName.split(' ').slice(1).join(' ') : '',
+          location: '',
+          zipCode: '',
+          country: '',
+          phone: data.phone || '',
+          email: data.email || '',
+          linkedIn: '',
+        });
+        setJobTitle(data.desirableJob || '');
+        setEducation(data.education || []);
+        setWorkExperience(
+          Array.isArray(data.experience) && data.experience.length > 0
+            ? data.experience.map((exp) => ({
+              company: exp.company || '',
+              role: exp.role || '',
+              duration: exp.duration || '',
+            }))
+            : []
+        );
+        setMustHaveSkills(['JavaScript', 'React', 'Node.js', 'CSS', 'HTML', 'Python', 'Java', 'SQL', 'Git', 'AWS']);
+        setSelectedSkills(data.skills || []);
+        setLanguages(['English (United States)', 'English (UK)', 'Spanish', 'French', 'German', 'Hindi', 'Chinese']);
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+        if (error.response) {
+          setError(
+            `Failed to load profile data: ${error.response.status} ${error.response.statusText}${error.response.data?.message ? ` - ${error.response.data.message}` : ''}`
+          );
+        } else if (error.request) {
+          setError('Failed to load profile data: Unable to connect to the server. Please check if the server is running.');
+        } else {
+          setError(`Failed to load profile data: ${error.message}`);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [router]);
+
+  const handleNext = () => setActiveStep((prev) => prev + 1);
+  const handleBack = () => setActiveStep((prev) => prev - 1);
+
+  const handleContactChange = (field, value) => {
+    setContactInfo((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const addEducation = () => setEducation((prev) => [...prev, { degree: '', institution: '', year: '' }]);
+  const removeEducation = (index) => setEducation((prev) => prev.filter((_, i) => i !== index));
+  const handleEducationChange = (index, field, value) => {
+    setEducation((prev) =>
+      prev.map((edu, i) => (i === index ? { ...edu, [field]: value } : edu))
+    );
+  };
+
+  const addWorkExp = () => setWorkExperience((prev) => [...prev, { company: '', role: '', duration: '' }]);
+  const removeWorkExp = (index) => setWorkExperience((prev) => prev.filter((_, i) => i !== index));
+  const handleWorkExpChange = (index, field, value) => {
+    setWorkExperience((prev) =>
+      prev.map((exp, i) => (i === index ? { ...exp, [field]: value } : exp))
+    );
+  };
+
+  const handleSkillToggle = (skill) => {
+    setSelectedSkills((prev) =>
+      prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]
+    );
+  };
+
+  const addCustomSkill = () => {
+    if (customSkill.trim() && !selectedSkills.includes(customSkill.trim())) {
+      setSelectedSkills((prev) => [...prev, customSkill.trim()]);
+      setCustomSkill('');
     }
-  }, [profile]);
+  };
+
+  const handleFileChange = (event) => {
+    setResumeFile(event.target.files[0]);
+  };
 
   const handlePreview = () => {
-    if (!selectedTemplate) return alert('Select a template');
+    if (!selectedTemplate) {
+      alert('Please select a template first');
+      return;
+    }
     setShowPreview(true);
   };
 
-  const handleDownload = () => {
-    if (!selectedTemplate) return alert('Please select a template first');
-    setShowPlans(true);
+  const handleDownload = async () => {
+    if (!selectedTemplate) {
+      alert('Please select a template first');
+      return;
+    }
+    if (!selectedPlan) {
+      setShowPlans(true);
+      return;
+    }
+    alert('Download functionality is disabled. Please enable jsPDF and html2canvas for PDF generation.');
   };
 
   const handlePlanPayment = async () => {
-    if (!selectedPlan) return alert('Please select a plan');
+    if (!selectedPlan) {
+      alert('Please select a plan');
+      return;
+    }
+    alert(`Payment processed for ${selectedPlan.name}`);
+    setShowPlans(false);
+  };
 
-    try {
-      const { data } = await axios.post('/api/payment', { amount: selectedPlan.price });
-
-      const options = {
-        key: 'RAZORPAY_KEY', // Replace with your actual Razorpay key
-        amount: data.amount,
-        currency: 'INR',
-        name: 'AI Resume Builder',
-        description: selectedPlan.name,
-        order_id: data.id,
-        handler: function (response) {
-          setIsPaid(true);
-          alert('Payment Successful! Resume is downloading...');
-          window.open(`/api/download?template=${selectedTemplate}`, '_blank');
-          setShowPlans(false);
-        },
-        prefill: {
-          name: profile?.name || '',
-          email: profile?.email || '',
-          contact: profile?.phone || '',
-        },
-        theme: {
-          color: '#1976d2',
-        },
-      };
-
-      const rzp = new window.Razorpay(options);
-      rzp.open();
-    } catch (error) {
-      console.error('Payment failed:', error);
-      alert('Payment failed. Please try again.');
+  const getStepContent = (step) => {
+    switch (step) {
+      case 0:
+        return (
+          <Paper
+            sx={{
+              p: 3,
+              mb: 4,
+              borderRadius: 2,
+              boxShadow: 3,
+              transition: 'transform 0.2s',
+              '&:hover': { transform: 'scale(1.01)' },
+            }}
+          >
+            <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', color: '#1976d2' }}>
+              Upload your resume
+            </Typography>
+            <Typography variant="body1" gutterBottom sx={{ color: '#555', mb: 3 }}>
+              Regardless of what shape it’s in, we’ll take it to the next level and customize it for your application.
+            </Typography>
+            <Box
+              sx={{
+                mt: 2,
+                p: 4,
+                border: '2px dashed #1976d2',
+                borderRadius: 2,
+                textAlign: 'center',
+                backgroundColor: '#f5f5f5',
+                minHeight: '150px',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                '&:hover': { backgroundColor: '#e3f2fd' },
+              }}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (e.dataTransfer.files.length > 0) handleFileChange({ target: { files: e.dataTransfer.files } });
+              }}
+            >
+              <Typography variant="h6" sx={{ mb: 1, color: '#1976d2' }}>
+                Drag and drop your resume here
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 2, color: '#666' }}>
+                or (up to 20MB)
+              </Typography>
+              <Button
+                variant="contained"
+                component="label"
+                sx={{ mb: 2, backgroundColor: '#1976d2', '&:hover': { backgroundColor: '#1565c0' } }}
+              >
+                Select file
+                <input type="file" hidden onChange={handleFileChange} />
+              </Button>
+              <Typography
+                variant="body2"
+                sx={{ color: 'primary.main', cursor: 'pointer', textDecoration: 'underline' }}
+                onClick={() => setNoResume(true)}
+              >
+                I don’t have a resume
+              </Typography>
+              {resumeFile || noResume ? (
+                <Button
+                  variant="contained"
+                  onClick={handleNext}
+                  sx={{ mt: 3, backgroundColor: '#4caf50', '&:hover': { backgroundColor: '#388e3c' } }}
+                  disabled={!resumeFile && !noResume}
+                >
+                  Continue
+                </Button>
+              ) : null}
+            </Box>
+          </Paper>
+        );
+      case 1:
+        return (
+          <Paper sx={{ p: 3, mb: 4 }}>
+            <Typography variant="h5" gutterBottom>Your Contact Information</Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="First Name"
+                  fullWidth
+                  value={contactInfo.firstName}
+                  onChange={(e) => handleContactChange('firstName', e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Last Name"
+                  fullWidth
+                  value={contactInfo.lastName}
+                  onChange={(e) => handleContactChange('lastName', e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Location"
+                  fullWidth
+                  value={contactInfo.location}
+                  onChange={(e) => handleContactChange('location', e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="ZIP Code (optional)"
+                  fullWidth
+                  value={contactInfo.zipCode}
+                  onChange={(e) => handleContactChange('zipCode', e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Country (optional)"
+                  fullWidth
+                  value={contactInfo.country}
+                  onChange={(e) => handleContactChange('country', e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Phone"
+                  fullWidth
+                  value={contactInfo.phone}
+                  onChange={(e) => handleContactChange('phone', e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Email"
+                  fullWidth
+                  value={contactInfo.email}
+                  onChange={(e) => handleContactChange('email', e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="LinkedIn (optional)"
+                  fullWidth
+                  value={contactInfo.linkedIn}
+                  onChange={(e) => handleContactChange('linkedIn', e.target.value)}
+                />
+              </Grid>
+            </Grid>
+            <FormControl fullWidth sx={{ mt: 2 }}>
+              <InputLabel>Choose Language</InputLabel>
+              <Select
+                value={selectedLanguage}
+                onChange={(e) => setSelectedLanguage(e.target.value)}
+                label="Choose Language"
+              >
+                {languages.map((lang) => (
+                  <MenuItem key={lang} value={lang}>
+                    {lang}
+                  </MenuItem>
+                ))}
+              </Select>
+              <FormHelperText>This will help us optimize your resume accordingly</FormHelperText>
+            </FormControl>
+          </Paper>
+        );
+      case 2:
+        return (
+          <Paper sx={{ p: 3, mb: 4 }}>
+            <Typography variant="h5" gutterBottom>What job are you applying for?</Typography>
+            <TextField
+              label="Job Title"
+              fullWidth
+              value={jobTitle}
+              onChange={(e) => setJobTitle(e.target.value)}
+              placeholder="e.g., Frontend Developer"
+            />
+            <Typography variant="body2" color="text.secondary" mt={1}>
+              Please provide a job title so that we can tailor your resume to the desired role.
+            </Typography>
+          </Paper>
+        );
+      case 3:
+        return (
+          <Paper sx={{ p: 3, mb: 4 }}>
+            <Typography variant="h5" gutterBottom>Please add your educational background</Typography>
+            {education.map((edu, index) => (
+              <Box key={index} sx={{ mb: 2, p: 2, border: '1px dashed #ccc', borderRadius: 2 }}>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={4}>
+                    <TextField
+                      label="Degree"
+                      fullWidth
+                      value={edu.degree}
+                      onChange={(e) => handleEducationChange(index, 'degree', e.target.value)}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField
+                      label="Institution"
+                      fullWidth
+                      value={edu.institution}
+                      onChange={(e) => handleEducationChange(index, 'institution', e.target.value)}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField
+                      label="Year"
+                      fullWidth
+                      value={edu.year}
+                      onChange={(e) => handleEducationChange(index, 'year', e.target.value)}
+                    />
+                  </Grid>
+                </Grid>
+                <IconButton onClick={() => removeEducation(index)}>
+                  <DeleteIcon />
+                </IconButton>
+              </Box>
+            ))}
+            <Button variant="outlined" startIcon={<AddIcon />} onClick={addEducation}>
+              Add Item
+            </Button>
+          </Paper>
+        );
+      case 4:
+        return (
+          <Paper sx={{ p: 3, mb: 4 }}>
+            <Typography variant="h5" gutterBottom>Please add your work experience</Typography>
+            {workExperience.map((exp, index) => (
+              <Box key={index} sx={{ mb: 2, p: 2, border: '1px dashed #ccc', borderRadius: 2 }}>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={4}>
+                    <TextField
+                      label="Company"
+                      fullWidth
+                      value={exp.company}
+                      onChange={(e) => handleWorkExpChange(index, 'company', e.target.value)}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField
+                      label="Role"
+                      fullWidth
+                      value={exp.role}
+                      onChange={(e) => handleWorkExpChange(index, 'role', e.target.value)}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField
+                      label="Duration"
+                      fullWidth
+                      value={exp.duration}
+                      onChange={(e) => handleWorkExpChange(index, 'duration', e.target.value)}
+                    />
+                  </Grid>
+                </Grid>
+                <IconButton onClick={() => removeWorkExp(index)}>
+                  <DeleteIcon />
+                </IconButton>
+              </Box>
+            ))}
+            <Button variant="outlined" startIcon={<AddIcon />} onClick={addWorkExp}>
+              Add Item
+            </Button>
+          </Paper>
+        );
+      case 5:
+        return (
+          <Paper sx={{ p: 3, mb: 4 }}>
+            <Typography variant="h5" gutterBottom>Add Skills</Typography>
+            <Grid container spacing={2}>
+              {mustHaveSkills.map((skill) => (
+                <Grid item xs={6} sm={4} key={skill}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={selectedSkills.includes(skill)}
+                        onChange={() => handleSkillToggle(skill)}
+                        color="primary"
+                      />
+                    }
+                    label={skill}
+                  />
+                </Grid>
+              ))}
+              <Grid item xs={12}>
+                <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+                  <TextField
+                    label="Add Custom Skill"
+                    value={customSkill}
+                    onChange={(e) => setCustomSkill(e.target.value)}
+                    fullWidth
+                  />
+                  <Button
+                    variant="contained"
+                    onClick={addCustomSkill}
+                    disabled={!customSkill.trim()}
+                  >
+                    Add
+                  </Button>
+                </Box>
+              </Grid>
+            </Grid>
+          </Paper>
+        );
+      case 6:
+        return (
+          <Box>
+            <Typography variant="h5" gutterBottom>Choose Resume Template</Typography>
+            <Grid container spacing={3}>
+              {templates.map((template) => (
+                <Grid item xs={12} md={6} key={template.id}>
+                  <Card
+                    onClick={() => setSelectedTemplate(template.id)}
+                    sx={{
+                      border:
+                        selectedTemplate === template.id
+                          ? '2px solid #1976d2'
+                          : '1px solid #ccc',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <CardContent>
+                      <Typography variant="h6" align="center">
+                        {template.name}
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        align="center"
+                        color="text.secondary"
+                      >
+                        {template.description}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+            <Box mt={4} display="flex" justifyContent="center" gap={2}>
+              <Button
+                variant="contained"
+                onClick={handlePreview}
+                disabled={!selectedTemplate}
+              >
+                Preview Resume
+              </Button>
+              <Button
+                variant="contained"
+                color="success"
+                startIcon={<DownloadIcon />}
+                onClick={handleDownload}
+                disabled={!selectedTemplate}
+              >
+                Download Resume
+              </Button>
+            </Box>
+          </Box>
+        );
+      default:
+        return <Typography>Step not found</Typography>;
     }
   };
 
-  if (!profile) return <Typography>Loading Profile...</Typography>;
+  const ModernResume = () => {
+    const isModern = selectedTemplate === 'modern';
 
-  return (
-    <Box p={4}>
-      {/* Back Button */}
-      <Box display="flex" alignItems="center" mb={3}>
-        <IconButton onClick={() => router.push('/user/Userdashboard')}>
-          <ArrowBackIcon />
-        </IconButton>
-        <Typography variant="h6" ml={1}>
-          Back to Dashboard
-        </Typography>
-      </Box>
+    return (
+      <Box
+        id="resume"
+        sx={{
+          p: isModern ? 4 : 3,
+          maxWidth: '800px',
+          margin: 'auto',
+          bgcolor: 'white',
+          boxShadow: 3,
+          border: isModern ? '1px solid #e0e0e0' : 'none',
+          fontFamily: isModern ? "'Roboto', sans-serif" : "'Times New Roman', Times, serif",
+          color: '#333',
+        }}
+      >
+        <Box
+          sx={{
+            textAlign: isModern ? 'left' : 'center',
+            borderBottom: isModern ? '3px solid #1976d2' : '2px solid #000',
+            pb: 2,
+            mb: 3,
+          }}
+        >
+          <Typography
+            variant="h3"
+            sx={{
+              fontWeight: isModern ? 'bold' : 'normal',
+              fontSize: isModern ? '2.5rem' : '2rem',
+              color: isModern ? '#1976d2' : '#000',
+            }}
+          >
+            {contactInfo.firstName} {contactInfo.lastName}
+          </Typography>
+          <Typography
+            variant="body1"
+            sx={{
+              fontSize: isModern ? '1rem' : '0.9rem',
+              color: isModern ? '#555' : '#000',
+              mt: isModern ? 1 : 0,
+            }}
+          >
+            {contactInfo.email} | {contactInfo.phone}
+            {contactInfo.linkedIn && ` | ${contactInfo.linkedIn}`}
+            {contactInfo.location &&
+              ` | ${contactInfo.location}${contactInfo.zipCode ? `, ${contactInfo.zipCode}` : ''}`}
+            {contactInfo.country && `, ${contactInfo.country}`}
+          </Typography>
+        </Box>
 
-      {/* Template Selection */}
-      <Typography variant="h4" gutterBottom>
-        Choose Resume Template
-      </Typography>
-
-      <Grid container spacing={3}>
-        {templates.map((template) => (
-          <Grid item xs={12} md={6} key={template.id}>
-            <Card
-              onClick={() => setSelectedTemplate(template.id)}
+        {jobTitle && (
+          <Box sx={{ mb: 3 }}>
+            <Typography
+              variant="h5"
               sx={{
-                border: selectedTemplate === template.id ? '2px solid #1976d2' : '1px solid #ccc',
-                cursor: 'pointer',
-                transition: '0.3s',
+                fontWeight: isModern ? 'bold' : 'normal',
+                fontSize: isModern ? '1.25rem' : '1.1rem',
+                color: isModern ? '#1976d2' : '#000',
+                borderBottom: isModern ? '2px solid #e0e0e0' : '1px solid #000',
+                pb: 0.5,
               }}
             >
-              <CardMedia
-                component="img"
-                height="200"
-                image={template.preview}
-                alt={template.name}
-              />
-              <CardContent>
-                <Typography variant="h6" align="center">
-                  {template.name}
-                </Typography>
-                <Typography variant="body2" align="center" color="text.secondary">
-                  {template.description}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
-
-      <Box mt={4}>
-        <Button variant="outlined" onClick={handlePreview} sx={{ mr: 2 }}>
-          Preview Resume
-        </Button>
-        <Button variant="contained" color="success" onClick={handleDownload}>
-          Download Resume
-        </Button>
-      </Box>
-
-      {/* Resume Preview Dialog */}
-      <Dialog open={showPreview} onClose={() => setShowPreview(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Resume Preview</DialogTitle>
-        <DialogContent dividers>
-          <Box p={2}>
-            <Typography variant="h5">{profile.name}</Typography>
-            <Typography>
-              {profile.email} | {profile.phone}
+              {isModern ? 'Career Objective' : 'Objective'}
             </Typography>
-            <Typography>DOB: {profile.dob}</Typography>
+            <Typography sx={{ mt: 1, fontSize: '0.95rem' }}>
+              Seeking a position as a {jobTitle} to leverage my skills and experience in a dynamic environment.
+            </Typography>
+          </Box>
+        )}
 
-            <Box mt={2}>
-              <Typography variant="h6">Education</Typography>
-              <Typography>
-                10th: {profile.education.tenth_board} - {profile.education.tenth}%
-              </Typography>
-              <Typography>
-                12th: {profile.education.twelfth_board} - {profile.education.twelfth}%
-              </Typography>
-              <Typography>
-                Graduation: {profile.education.graduation.Graducation} in{' '}
-                {profile.education.graduation.branch} from{' '}
-                {profile.education.graduation.collage_name} (
-                {profile.education.graduation.year}) - CGPA:{' '}
-                {profile.education.graduation.CGPA}
-              </Typography>
-            </Box>
-
-            <Box mt={2}>
-              <Typography variant="h6">Skills</Typography>
-              <Typography>{profile.skills?.join(', ') || 'None'}</Typography>
-            </Box>
-
-            <Box mt={2}>
-              <Typography variant="h6">Experience</Typography>
-              <Typography>{profile.experience || 'Not Provided'}</Typography>
-            </Box>
-
-            <Box mt={2}>
-              <Typography variant="h6">Desired Jobs</Typography>
-              <Typography>{profile.desiredJobs?.join(', ') || 'Not Set'}</Typography>
+        {selectedSkills.length > 0 && (
+          <Box sx={{ mb: 3 }}>
+            <Typography
+              variant="h5"
+              sx={{
+                fontWeight: isModern ? 'bold' : 'normal',
+                fontSize: isModern ? '1.25rem' : '1.1rem',
+                color: isModern ? '#1976d2' : '#000',
+                borderBottom: isModern ? '2px solid #e0e0e0' : '1px solid #000',
+                pb: 0.5,
+              }}
+            >
+              Skills
+            </Typography>
+            <Box
+              sx={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 1,
+                mt: 1,
+              }}
+            >
+              {selectedSkills.map((skill, index) => (
+                <Typography
+                  key={index}
+                  sx={{
+                    fontSize: '0.95rem',
+                    backgroundColor: isModern ? '#e3f2fd' : 'transparent',
+                    borderRadius: isModern ? '12px' : 'none',
+                    padding: isModern ? '4px 12px' : '0',
+                    display: 'inline-block',
+                  }}
+                >
+                  {skill}
+                </Typography>
+              ))}
             </Box>
           </Box>
+        )}
+
+        {workExperience.length > 0 && (
+          <Box sx={{ mb: 3 }}>
+            <Typography
+              variant="h5"
+              sx={{
+                fontWeight: isModern ? 'bold' : 'normal',
+                fontSize: isModern ? '1.25rem' : '1.1rem',
+                color: isModern ? '#1976d2' : '#000',
+                borderBottom: isModern ? '2px solid #e0e0e0' : '1px solid #000',
+                pb: 0.5,
+              }}
+            >
+              Work Experience
+            </Typography>
+            {workExperience.map((exp, index) => (
+              <Box key={index} sx={{ mt: 2 }}>
+                <Typography sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
+                  {exp.role} - {exp.company}
+                </Typography>
+                <Typography sx={{ fontSize: '0.9rem', color: '#555' }}>
+                  {exp.duration}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+        )}
+
+        {education.length > 0 && (
+          <Box sx={{ mb: 3 }}>
+            <Typography
+              variant="h5"
+              sx={{
+                fontWeight: isModern ? 'bold' : 'normal',
+                fontSize: isModern ? '1.25rem' : '1.1rem',
+                color: isModern ? '#1976d2' : '#000',
+                borderBottom: isModern ? '2px solid #e0e0e0' : '1px solid #000',
+                pb: 0.5,
+              }}
+            >
+              Education
+            </Typography>
+            {education.map((edu, index) => (
+              <Box key={index} sx={{ mt: 2 }}>
+                <Typography sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
+                  {edu.degree} - {edu.institution}
+                </Typography>
+                <Typography sx={{ fontSize: '0.9rem', color: '#555' }}>
+                  {edu.year}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+        )}
+      </Box>
+    );
+  };
+
+  if (loading) return <Typography>Loading profile data...</Typography>;
+  if (error) return (
+    <Box>
+      <Typography color="error">{error}</Typography>
+      <Button
+        variant="contained"
+        onClick={() => router.push('/login')}
+        sx={{ mt: 2 }}
+      >
+        Go to Login
+      </Button>
+    </Box>
+  );
+
+  return (
+    <Box p={4} bgcolor="#f5f5f5" minHeight="100vh">
+      <IconButton onClick={() => router.push('/user/Userdashboard')}>
+        <ArrowBackIcon />
+      </IconButton>
+      <Typography variant="h6" ml={1}>
+        Back to Dashboard
+      </Typography>
+
+      <Stepper activeStep={activeStep} sx={{ mt: 4, mb: 4 }}>
+        {steps.map((label) => (
+          <Step key={label}>
+            <StepLabel>{label}</StepLabel>
+          </Step>
+        ))}
+      </Stepper>
+
+      {getStepContent(activeStep)}
+
+      <Box sx={{ mt: 4, display: 'flex', justifyContent: 'space-between' }}>
+        <Button disabled={activeStep === 0} onClick={handleBack}>
+          Back
+        </Button>
+        {activeStep < steps.length - 1 && (
+          <Button
+            variant="contained"
+            onClick={handleNext}
+            disabled={
+              (activeStep === 0 && !resumeFile && !noResume) ||
+              (activeStep === 3 && education.length === 0) ||
+              // (activeStep === 4 && workExperience.length === 0) ||
+              (activeStep === 5 && selectedSkills.length === 0)
+            }
+          >
+            Continue
+          </Button>
+        )}
+      </Box>
+
+      <Dialog open={showPreview} onClose={() => setShowPreview(false)} maxWidth="md" fullWidth>
+        <DialogTitle>
+          Resume Preview - {templates.find((t) => t.id === selectedTemplate)?.name || 'Template'}
+        </DialogTitle>
+        <DialogContent>
+          <ModernResume />
         </DialogContent>
       </Dialog>
 
-      {/* Plan Selection Dialog */}
       <Dialog open={showPlans} onClose={() => setShowPlans(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Select a Resume Plan</DialogTitle>
-        <DialogContent dividers>
+        <DialogContent>
           <Grid container spacing={2}>
             {plans.map((plan) => (
               <Grid item xs={12} key={plan.id}>
@@ -228,27 +817,23 @@ export default function ResumeBuilderPage() {
                   onClick={() => setSelectedPlan(plan)}
                   sx={{
                     p: 2,
-                    cursor: 'pointer',
-                    border: selectedPlan?.id === plan.id ? '2px solid #1976d2' : '1px solid #ccc',
+                    border:
+                      selectedPlan?.id === plan.id ? '2px solid #4caf50' : '1px solid #ddd',
                   }}
                 >
-                  <Typography variant="subtitle1">{plan.name}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {plan.limit === Infinity
-                      ? 'Unlimited Resumes'
-                      : `${plan.limit} Resume Downloads`}{' '}
-                    | Valid for {plan.validityDays} days
-                  </Typography>
+                  <Typography>{plan.name}</Typography>
                 </Card>
               </Grid>
             ))}
           </Grid>
-
-          <Box mt={2} textAlign="right">
-            <Button variant="contained" onClick={handlePlanPayment} disabled={!selectedPlan}>
-              Proceed to Pay
-            </Button>
-          </Box>
+          <Button
+            variant="contained"
+            onClick={handlePlanPayment}
+            disabled={!selectedPlan}
+            sx={{ mt: 2 }}
+          >
+            Proceed to Pay
+          </Button>
         </DialogContent>
       </Dialog>
     </Box>
