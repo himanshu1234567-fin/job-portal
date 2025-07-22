@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Button, Card, CardContent, Typography, Radio, RadioGroup,
-  FormControlLabel, Checkbox, LinearProgress, Divider
+  FormControlLabel, Checkbox, LinearProgress, Divider, CircularProgress
 } from '@mui/material';
 
 const TestPage = () => {
@@ -14,20 +14,36 @@ const TestPage = () => {
   const [showResult, setShowResult] = useState(false);
   const [totalTime, setTotalTime] = useState(0);
   const [timer, setTimer] = useState(0);
+  const [loading, setLoading] = useState(true); // Added loading state
 
   useEffect(() => {
     const fetchQuestions = async () => {
+      setLoading(true);
       try {
         const token = localStorage.getItem('authToken');
-
         const response = await fetch('http://localhost:5000/api/questions', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         });
+        
+        const json = await response.json();
 
-        const json = await res.json();
-        const fetchedQuestions = Array.isArray(json.data) ? json.data : [];
+        if (!response.ok) {
+            console.error('API Error:', json.message || 'Failed to fetch');
+            setQuestions([]);
+            setLoading(false);
+            return;
+        }
+        
+        let fetchedQuestions = [];
+        if (Array.isArray(json)) {
+            fetchedQuestions = json;
+        } else if (Array.isArray(json.data)) {
+            fetchedQuestions = json.data;
+        } else if (Array.isArray(json.questions)) {
+            fetchedQuestions = json.questions;
+        }
 
         setQuestions(fetchedQuestions);
 
@@ -39,8 +55,12 @@ const TestPage = () => {
         const finalDuration = totalDuration > 0 ? totalDuration : 60;
         setTotalTime(finalDuration);
         setTimer(finalDuration);
+
       } catch (error) {
         console.error('Failed to fetch questions:', error);
+        setQuestions([]); // Ensure questions are empty on error
+      } finally {
+        setLoading(false); // Stop loading in all cases
       }
     };
 
@@ -95,7 +115,6 @@ const TestPage = () => {
       const correctAnswers = question.options
         ?.filter(opt => opt.isCorrect)
         ?.map(opt => opt.text) || [];
-
       const userAnswer = userAnswers[question.title];
 
       const isCorrect = question.allowMultipleCorrect
@@ -112,10 +131,19 @@ const TestPage = () => {
   };
 
   // If no questions found
+  // Show a loading indicator while fetching
+  if (loading) {
+      return (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
+              <CircularProgress />
+              <Typography sx={{ ml: 2 }}>Loading Questions...</Typography>
+          </Box>
+      );
+  }
   if (questions.length === 0) {
     return (
-      <Typography sx={{ m: 4 }} variant="h6">
-        No Questions Found. Please add questions first.
+      <Typography sx={{ m: 4, textAlign: 'center' }} variant="h6">
+        No Questions Found.
       </Typography>
     );
   }
@@ -155,6 +183,14 @@ const TestPage = () => {
         </Box>
         <Typography variant="h4" gutterBottom>Test Completed!</Typography>
         <Typography variant="h6">Your Score: {score} / {questions.length}</Typography>
+        <Button 
+                          variant="contained" 
+                          size="large"
+                          sx={{ mt: 2 }}
+                          href='/'
+                        >
+                          Back to Home
+                        </Button>
       </Box>
     );
   }

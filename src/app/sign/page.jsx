@@ -13,6 +13,15 @@ import {
 } from '@mui/material';
 import { useRouter } from 'next/navigation';
 
+const initialForm = {
+  fullName: '',
+  email: '',
+  password: '',
+  confirmPassword: '',
+  signInEmail: '',
+  signInPassword: '',
+};
+
 export default function SignPage() {
   const [tab, setTab] = useState(0);
   const [error, setError] = useState('');

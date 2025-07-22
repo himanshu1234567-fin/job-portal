@@ -375,8 +375,9 @@ export default function ResumeBuilder() {
       ) : (
         <Container maxWidth="lg" sx={{ py: 4 }}>
           <Grid container spacing={4}>
-            {/* Welcome Section */}
+            {/* Main Content Column */}
             <Grid item xs={12} md={8}>
+              {/* Welcome Section */}
               <Paper sx={{ p: 3, mb: 3, borderRadius: 2, boxShadow: 1 }}>
                 <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold' }}>
                   Land a better job faster!
@@ -394,10 +395,14 @@ export default function ResumeBuilder() {
                 </Button>
               </Paper>
 
-              {/* Tasks Section (Original Layout) */}
+              {/* Tasks Section (MODIFIED) */}
               <Paper sx={{
-                p: 2, bgcolor: '#f5faff', borderRadius: 2,
-                display: 'flex', flexDirection: 'column', height: '50%'
+                p: 2,
+                bgcolor: '#f5faff',
+                borderRadius: 2,
+                display: 'flex',
+                flexDirection: 'column',
+                mb: 3 // Added margin-bottom
               }}>
                 <Typography variant="h6" fontWeight="bold" sx={{ color: '#003366', mb: 2 }}>
                   Tasks
@@ -409,9 +414,11 @@ export default function ResumeBuilder() {
                     <Typography sx={{ mt: 2 }}>Loading tasks...</Typography>
                   </Box>
                 ) : tasks.length === 0 ? (
-                  <Typography>No tasks available.</Typography>
+                  <Typography sx={{ py: 4, textAlign: 'center' }}>
+                    No tasks available.
+                  </Typography>
                 ) : (
-                  <Box sx={{ flex: 1, overflowY: 'auto', maxHeight: '250px' }}>
+                  <Box sx={{ overflowY: 'auto', maxHeight: '250px' }}>
                     {tasks.map((task, idx) => (
                       <Box key={idx} sx={{ mb: 2 }}>
                         <a href={`/user/test?taskId=${task._id || idx}`} style={{ textDecoration: 'none' }}>
@@ -428,9 +435,32 @@ export default function ResumeBuilder() {
                   </Box>
                 )}
               </Paper>
+              
+              {/* Quick Links (MOVED HERE) */}
+              <Paper sx={{ p: 3, mb: 3, borderRadius: 2, boxShadow: 1 }}>
+                <Typography variant="h6" component="h2" gutterBottom sx={{ fontWeight: 'bold' }}>
+                  Quick links
+                </Typography>
+                <Typography variant="body2" color="text.secondary" paragraph>
+                  Important links related to your searches and bookmarks.
+                </Typography>
+                
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <Checkbox />
+                  <Typography>New job search</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <Checkbox checked />
+                  <Typography>Previous job searches (1)</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Checkbox checked />
+                  <Typography>Saved searches (0)</Typography>
+                </Box>
+              </Paper>
             </Grid>
 
-            {/* Coaching Section */}
+            {/* Coaching Section (Sidebar) */}
             <Grid item xs={12} md={4}>
               <Paper sx={{ p: 3, height: '100%', borderRadius: 2, boxShadow: 1 }}>
                 <Typography variant="h6" component="h2" gutterBottom sx={{ fontWeight: 'bold' }}>
@@ -455,28 +485,6 @@ export default function ResumeBuilder() {
               </Paper>
             </Grid>
           </Grid>
-          {/* Quick Links */}
-          <Paper sx={{ p: 3, mb: 3, borderRadius: 2, boxShadow: 1 }}>
-            <Typography variant="h6" component="h2" gutterBottom sx={{ fontWeight: 'bold' }}>
-              Quick links
-            </Typography>
-            <Typography variant="body2" color="text.secondary" paragraph>
-              Important links related to your searches and bookmarks.
-            </Typography>
-            
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <Checkbox />
-              <Typography>New job search</Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-              <Checkbox checked />
-              <Typography>Previous job searches (1)</Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Checkbox checked />
-              <Typography>Saved searches (0)</Typography>
-            </Box>
-          </Paper>
         </Container>
       )}
 
