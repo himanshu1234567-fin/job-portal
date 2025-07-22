@@ -19,7 +19,8 @@ const TestPage = () => {
     const fetchQuestions = async () => {
       try {
         const token = localStorage.getItem('authToken');
-        const res = await fetch('http://localhost:3000/api/questions', {
+
+        const response = await fetch('http://localhost:5000/api/questions', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -152,6 +153,8 @@ const TestPage = () => {
             Go to Home
           </Button>
         </Box>
+        <Typography variant="h4" gutterBottom>Test Completed!</Typography>
+        <Typography variant="h6">Your Score: {score} / {questions.length}</Typography>
       </Box>
     );
   }
