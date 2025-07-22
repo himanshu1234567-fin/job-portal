@@ -12,7 +12,6 @@ import {
   Alert,
 } from '@mui/material';
 import { useRouter } from 'next/navigation';
-import { apiFetch } from '../utils/api';
 
 const initialForm = {
   fullName: '',
@@ -51,11 +50,7 @@ export default function SignPage() {
       return setError('Passwords do not match.');
 
     try {
-<<<<<<< HEAD
       const res = await fetch('http://localhost:5000/api/auth/register', {
-=======
-      const res = await apiFetch('/api/auth/register', {
->>>>>>> 4a26cca3acedecf4b8cae6193b84a40747bab4ec
         method: 'POST',
         body: JSON.stringify({ fullName, email, password }),
       });
