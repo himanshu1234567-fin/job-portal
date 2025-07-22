@@ -57,7 +57,7 @@ export default function ResumeBuilder() {
 
       setLoadingTasks(true);
       try {
-        const response = await fetch('http://localhost:3000/api/questions', {
+        const response = await fetch('http://localhost:5000/api/questions', {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
