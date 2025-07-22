@@ -19,7 +19,6 @@ const TestPage = () => {
     const fetchQuestions = async () => {
       try {
         const token = localStorage.getItem('authToken');
-
         const res = await fetch('http://localhost:3000/api/questions', {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -49,9 +48,7 @@ const TestPage = () => {
 
   useEffect(() => {
     if (timer > 0 && !showResult) {
-      const interval = setInterval(() => {
-        setTimer(prev => prev - 1);
-      }, 1000);
+      const interval = setInterval(() => setTimer(prev => prev - 1), 1000);
       return () => clearInterval(interval);
     } else if (timer <= 0 && !showResult && questions.length > 0) {
       submitTest();
@@ -59,29 +56,27 @@ const TestPage = () => {
   }, [timer, showResult, questions]);
 
   const handleAnswerChange = (optionText) => {
-    setUserAnswers({
-      ...userAnswers,
+    setUserAnswers(prev => ({
+      ...prev,
       [questions[currentIndex]?.title]: optionText
-    });
+    }));
   };
 
   const handleMultipleAnswerChange = (optionText) => {
     const currentQuestion = questions[currentIndex];
     if (!currentQuestion) return;
+
     const key = currentQuestion.title;
     const previousAnswers = userAnswers[key] || [];
 
-    if (previousAnswers.includes(optionText)) {
-      setUserAnswers({
-        ...userAnswers,
-        [key]: previousAnswers.filter(ans => ans !== optionText)
-      });
-    } else {
-      setUserAnswers({
-        ...userAnswers,
-        [key]: [...previousAnswers, optionText]
-      });
-    }
+    const updatedAnswers = previousAnswers.includes(optionText)
+      ? previousAnswers.filter(ans => ans !== optionText)
+      : [...previousAnswers, optionText];
+
+    setUserAnswers(prev => ({
+      ...prev,
+      [key]: updatedAnswers
+    }));
   };
 
   const handleNext = () => {
@@ -102,22 +97,20 @@ const TestPage = () => {
 
       const userAnswer = userAnswers[question.title];
 
-      if (question.allowMultipleCorrect) {
-        const correct = Array.isArray(userAnswer)
+      const isCorrect = question.allowMultipleCorrect
+        ? Array.isArray(userAnswer)
           && userAnswer.length === correctAnswers.length
-          && userAnswer.every(ans => correctAnswers.includes(ans));
-        if (correct) calculatedScore += 1;
-      } else {
-        if (userAnswer === correctAnswers[0]) {
-          calculatedScore += 1;
-        }
-      }
+          && userAnswer.every(ans => correctAnswers.includes(ans))
+        : userAnswer === correctAnswers[0];
+
+      if (isCorrect) calculatedScore += 1;
     });
 
     setScore(calculatedScore);
     setShowResult(true);
   };
 
+  // If no questions found
   if (questions.length === 0) {
     return (
       <Typography sx={{ m: 4 }} variant="h6">
@@ -126,44 +119,39 @@ const TestPage = () => {
     );
   }
 
+  // Show result screen
   if (showResult) {
     return (
-<<<<<<< HEAD
       <Box sx={{ maxWidth: 600, mx: 'auto', mt: 8, textAlign: 'center' }}>
-        <Typography variant="h4" gutterBottom>Test Completed!</Typography>
-        <Typography variant="h6">Your Score: {score} / {questions.length}</Typography>
-=======
-      <Box sx={{ 
-        maxWidth: 600, 
-        mx: 'auto', 
-        p: 4, 
-        textAlign: 'center',
-        boxShadow: 3,
-        borderRadius: 2,
-        mt: 4
-      }}>
-        <Typography variant="h4" gutterBottom sx={{ color: 'primary.main' }}>
-          Test Completed!
-        </Typography>
-        <Typography variant="h5" sx={{ mb: 3 }}>
-          Your Score: {score} / {questions.length}
-        </Typography>
-        <Typography variant="body1" sx={{ mb: 2 }}>
-          {score === questions.length ? 'Perfect score! 🎉' : ''}
-          {score >= questions.length * 0.7 ? 'Well done!' : ''}
-        </Typography>
-         <Button
-          variant="contained"
-          fullWidth
-          sx={{
-            bgcolor: '#fff', color: '#003366', mt: 3, fontWeight: 'bold',
-            '&:hover': { bgcolor: '#e0e0e0' },
-          }}
-          href='/'
-        >
-          Go to Home
-        </Button>
->>>>>>> 33114b60ccb165df49454b4f721267ddac3a8900
+        <Box sx={{
+          p: 4,
+          boxShadow: 3,
+          borderRadius: 2,
+          bgcolor: '#f5f5f5',
+        }}>
+          <Typography variant="h4" gutterBottom sx={{ color: 'primary.main' }}>
+            Test Completed!
+          </Typography>
+          <Typography variant="h5" sx={{ mb: 3 }}>
+            Your Score: {score} / {questions.length}
+          </Typography>
+          <Typography variant="body1" sx={{ mb: 2 }}>
+            {score === questions.length && 'Perfect score! 🎉'}
+            {score >= questions.length * 0.7 && 'Well done!'}
+            {score < questions.length * 0.7 && 'Keep practicing!'}
+          </Typography>
+          <Button
+            variant="contained"
+            fullWidth
+            sx={{
+              bgcolor: '#003366', color: '#fff', mt: 3, fontWeight: 'bold',
+              '&:hover': { bgcolor: '#002244' },
+            }}
+            href="/"
+          >
+            Go to Home
+          </Button>
+        </Box>
       </Box>
     );
   }
@@ -172,8 +160,14 @@ const TestPage = () => {
 
   return (
     <Box sx={{ maxWidth: 600, mx: 'auto', p: 2 }}>
+      {/* Timer & Progress */}
       <Box sx={{ mb: 2 }}>
-        <Typography variant="body1" fontWeight="bold" textAlign="center" color={timer <= 10 ? 'error' : 'text.primary'}>
+        <Typography
+          variant="body1"
+          fontWeight="bold"
+          textAlign="center"
+          color={timer <= 10 ? 'error' : 'text.primary'}
+        >
           Time Remaining: {timer} sec
         </Typography>
         <LinearProgress
@@ -183,14 +177,15 @@ const TestPage = () => {
         />
       </Box>
 
+      {/* Question Card */}
       <Card sx={{ borderRadius: 3, boxShadow: 3 }}>
         <CardContent>
           <Typography variant="h6" sx={{ mb: 2 }}>
             {currentQuestion.question}
           </Typography>
-
           <Divider sx={{ mb: 2 }} />
 
+          {/* Options */}
           {currentQuestion.allowMultipleCorrect ? (
             currentQuestion.options.map((option, idx) => (
               <FormControlLabel
@@ -224,6 +219,7 @@ const TestPage = () => {
 
           <Divider sx={{ my: 2 }} />
 
+          {/* Next/Submit Button */}
           <Button
             variant="contained"
             onClick={handleNext}
@@ -234,9 +230,9 @@ const TestPage = () => {
               '&:hover': { bgcolor: '#1558b0' }
             }}
             disabled={
-              (currentQuestion.allowMultipleCorrect
+              currentQuestion.allowMultipleCorrect
                 ? (userAnswers[currentQuestion.title] || []).length === 0
-                : !userAnswers[currentQuestion.title])
+                : !userAnswers[currentQuestion.title]
             }
           >
             {currentIndex + 1 === questions.length ? 'Submit' : 'Next'}
@@ -244,6 +240,7 @@ const TestPage = () => {
         </CardContent>
       </Card>
 
+      {/* Footer */}
       <Typography
         variant="body2"
         sx={{ mt: 2, textAlign: 'center', color: 'text.secondary' }}
