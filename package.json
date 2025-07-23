@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start"
   },
@@ -17,6 +17,7 @@
     "amqplib": "^0.10.8",
     "autoprefixer": "^10.4.17",
     "axios": "^1.10.0",
+    "multer": "^2.0.2",
     "next": "13.4.19",
     "react": "18.2.0",
     "react-dom": "18.2.0",
