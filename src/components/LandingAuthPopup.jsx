@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useEffect } from 'react';
 import {
   Box, Typography, TextField, Button, Tabs, Tab, Alert,
@@ -39,7 +41,8 @@ export default function LandingAuthPopup({ open, onSuccess, onClose }) {
   const completeLogin = () => {
     onSuccess();
     onClose();
-    router.push('/');
+    // Refresh the current route to reflect the new login state
+    router.refresh();
   };
 
   const handleSignUp = async (e) => {

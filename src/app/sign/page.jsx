@@ -12,6 +12,7 @@ import {
   Alert,
 } from '@mui/material';
 import { useRouter } from 'next/navigation';
+<<<<<<< HEAD
 
 const initialForm = {
   fullName: '',
@@ -21,6 +22,8 @@ const initialForm = {
   signInEmail: '',
   signInPassword: '',
 };
+=======
+>>>>>>> 9033fb1ca8285e267fab1623bdb9d651252c828f
 
 export default function SignPage() {
   const [tab, setTab] = useState(0);
