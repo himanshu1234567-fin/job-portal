@@ -57,7 +57,7 @@ const QuestionBuilder = () => {
       setLoading(true);
       setError(null);
 
-      const res = await fetch('http://localhost:3000/api/questions', {
+      const res = await fetch('http://localhost:5000/api/questions', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -190,7 +190,7 @@ const QuestionBuilder = () => {
     try {
       if (!authToken) throw new Error('Authentication token missing');
 
-      const res = await fetch('http://localhost:3000/api/questions', {
+      const res = await fetch('http://localhost:5000/api/questions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -232,7 +232,7 @@ const QuestionBuilder = () => {
     try {
       if (!authToken) throw new Error('Authentication token missing');
 
-      const res = await fetch(`http://localhost:3000/api/questions/${id}`, {
+      const res = await fetch(`http://localhost:5000/api/questions/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${authToken}`,

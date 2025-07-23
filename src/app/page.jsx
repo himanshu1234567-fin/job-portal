@@ -3,18 +3,81 @@
 import React, { useEffect, useState } from 'react';
 import {
   AppBar, Toolbar, IconButton, Button, Typography, Box, Container, Drawer,
-  Avatar, CircularProgress, Paper, Divider, Grid
+  Avatar, CircularProgress, Paper, Divider, Grid, Checkbox, Chip
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import CompleteProfilePopup from '../components/PopupCard';
 import LandingAuthPopup from '../components/LandingAuthPopup';
 
 const navigation = [
-  { name: 'Product', href: '#' },
-  { name: 'Features', href: '#' },
-  { name: 'Marketplace', href: '#' },
-  { name: 'Company', href: '#' },
+  { name: 'Jobs', href: '#' },
+  { name: 'Headhunters', href: '#' },
+  { name: 'Resume', href: '#' },
+  { name: 'Coaching', href: '#' },
 ];
+
+const ProfileAvatarWithProgress = ({ user, progress }) => {
+  return (
+    <Box sx={{ 
+      position: 'relative', 
+      display: 'inline-flex',
+      '&:hover': {
+        '& .progress-percent': {
+          opacity: 1,
+        }
+      }
+    }}>
+      <Avatar
+        alt={user.fullName}
+        sx={{
+          width: 32,
+          height: 32,
+          bgcolor: 'primary.main',
+          fontSize: '0.875rem',
+        }}
+      >
+        {user.fullName?.[0]}
+      </Avatar>
+      {progress < 100 && (
+        <>
+          <CircularProgress
+            variant="determinate"
+            value={progress}
+            size={38}
+            thickness={4}
+            sx={{
+              color: 'primary.main',
+              position: 'absolute',
+              top: -3,
+              left: -3,
+              zIndex: 1,
+            }}
+          />
+          <Box
+            className="progress-percent"
+            sx={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'primary.main',
+              fontSize: '0.6rem',
+              fontWeight: 'bold',
+              opacity: 0,
+              transition: 'opacity 0.3s',
+            }}
+          >
+            {progress}%
+          </Box>
+        </>
+      )}
+    </Box>
+  );
+};
 
 export default function ResumeBuilder() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -23,15 +86,55 @@ export default function ResumeBuilder() {
   const [loadingTasks, setLoadingTasks] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
-  const [profileProgress, setProfileProgress] = useState(0);
   const [showLandingAuthPopup, setShowLandingAuthPopup] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(false);
+  const [profileCompletion, setProfileCompletion] = useState(0);
+
+  const calculateProfileCompletion = (profile) => {
+    if (!profile) return 0;
+
+    const fieldsToCheck = [
+      'fullName', 'email', 'dob', 'phone',
+      'education', 'skills', 'experience', 'desirableJob'
+    ];
+
+    let completedFields = 0;
+
+    fieldsToCheck.forEach(field => {
+      if (profile[field]) {
+        if (Array.isArray(profile[field])) {
+          if (profile[field].length > 0) completedFields++;
+        } else {
+          completedFields++;
+        }
+      }
+    });
+
+    if (profile.education && profile.education.length > 0) {
+      const edu = profile.education[0];
+      const eduFields = [
+        'college', 'collegeDegree', 'branch',
+        'passingYear', 'cgpa',
+        'board10', 'percentage10', 'board12', 'percentage12'
+      ];
+      
+      eduFields.forEach(field => {
+        if (edu[field] !== undefined && edu[field] !== null && edu[field] !== '') {
+          completedFields++;
+        }
+      });
+    }
+
+    const totalFields = fieldsToCheck.length + 10;
+    return Math.round((completedFields / totalFields) * 100);
+  };
+
+  const isProfileComplete = (profile) => {
+    return calculateProfileCompletion(profile) === 100;
+  };
 
   useEffect(() => {
     const storedUser = localStorage.getItem('currentUser');
-    const progressValue = parseInt(localStorage.getItem('profileProgress'), 10);
-
-    setProfileProgress(isNaN(progressValue) ? 0 : progressValue);
-
     if (storedUser && storedUser !== 'undefined') {
       try {
         const parsedUser = JSON.parse(storedUser);
@@ -49,6 +152,36 @@ export default function ResumeBuilder() {
 
     setAuthLoading(false);
   }, []);
+
+  useEffect(() => {
+    const fetchCandidateProfile = async () => {
+      const token = localStorage.getItem('authToken');
+      if (!token) return;
+
+      setLoadingProfile(true);
+      try {
+        const response = await fetch('http://localhost:5000/api/candidates/me', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        const data = await response.json();
+        const completion = calculateProfileCompletion(data);
+        setProfileCompletion(completion);
+        setShowPopup(completion === 0);
+      } catch (err) {
+        console.error('Error fetching candidate profile:', err);
+      } finally {
+        setLoadingProfile(false);
+      }
+    };
+
+    if (currentUser) {
+      fetchCandidateProfile();
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -71,7 +204,15 @@ export default function ResumeBuilder() {
         else if (Array.isArray(data.data)) fetchedTasks = data.data;
         else if (data.questions) fetchedTasks = data.questions;
 
-        setTasks(fetchedTasks);
+        // Transform the API data to match our expected task structure
+        const transformedTasks = fetchedTasks.map(task => ({
+          title: task.title || task.question || 'Untitled Task',
+          question: task.question || task.title || 'No question text provided',
+          duration: task.duration || 60,
+          options: task.options || []
+        }));
+
+        setTasks(transformedTasks);
       } catch (err) {
         console.error('Failed to load tasks:', err);
       } finally {
@@ -79,7 +220,12 @@ export default function ResumeBuilder() {
       }
     };
 
-    if (currentUser) fetchTasks();
+    if (currentUser) {
+      fetchTasks();
+      // Set up polling to fetch tasks every 30 seconds
+      const intervalId = setInterval(fetchTasks, 30000);
+      return () => clearInterval(intervalId);
+    }
   }, [currentUser]);
 
   const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
@@ -93,10 +239,9 @@ export default function ResumeBuilder() {
 
   const handleClosePopup = () => {
     setShowPopup(false);
-    localStorage.setItem('profilePopupDismissed', 'true');
   };
 
-  if (authLoading) {
+  if (authLoading || loadingProfile) {
     return (
       <Box sx={{
         display: 'flex', justifyContent: 'center',
@@ -111,13 +256,9 @@ export default function ResumeBuilder() {
     <Box sx={{ flexGrow: 1 }}>
       <AppBar position="static" color="transparent" elevation={0}>
         <Toolbar sx={{ justifyContent: 'space-between' }}>
-          <a href="/">
-            <img
-              alt="Logo"
-              src="https://img.freepik.com/free-vector/colorful-bird-illustration-gradient_343694-1741.jpg"
-              height={40}
-            />
-          </a>
+          <Typography variant="h6" component="div" sx={{ fontWeight: 'bold' }}>
+            jobMyleads
+          </Typography>
 
           <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 2, alignItems: 'center' }}>
             {navigation.map((item) => (
@@ -126,42 +267,20 @@ export default function ResumeBuilder() {
 
             {currentUser ? (
               <>
-                <Box sx={{ position: 'relative', display: 'inline-flex' }}>
-                  <CircularProgress
-                    variant="determinate"
-                    value={profileProgress}
-                    size={44}
-                    thickness={4}
-                    sx={{ color: 'primary.main' }}
-                  />
-                  <Box sx={{
-                    top: 0,
-                    left: 0,
-                    bottom: 0,
-                    right: 0,
-                    position: 'absolute',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}>
-                    <a href="/user/profile" style={{ textDecoration: 'none' }}>
-                      <Avatar
-                        alt={currentUser.fullName}
-                        sx={{
-                          width: 32,
-                          height: 32,
-                          bgcolor: 'primary.main',
-                        }}
-                      >
-                        {currentUser.fullName?.[0]}
-                      </Avatar>
-                    </a>
-                  </Box>
-                </Box>
+                <a href="/user/profile" style={{ textDecoration: 'none' }}>
+                  <ProfileAvatarWithProgress user={currentUser} progress={profileCompletion} />
+                </a>
                 <Button onClick={handleLogout} color="error">Logout</Button>
               </>
             ) : (
-              <Button href="/sign" variant="outlined">Log in / Sign up</Button>
+              <>
+                <Button onClick={() => setShowLandingAuthPopup(true)} variant="outlined">
+                  Sign up now
+                </Button>
+                <Button onClick={() => setShowLandingAuthPopup(true)} variant="contained">
+                  Log in
+                </Button>
+              </>
             )}
           </Box>
 
@@ -176,158 +295,200 @@ export default function ResumeBuilder() {
         </Toolbar>
       </AppBar>
 
-      <Drawer anchor="right" open={mobileOpen} onClose={handleDrawerToggle} ModalProps={{ keepMounted: true }}>
-        <Box onClick={handleDrawerToggle} sx={{ textAlign: 'center' }}>
-          <Typography variant="h6" sx={{ my: 2 }}>MENU</Typography>
-          {navigation.map((item) => (
-            <Button key={item.name} href={item.href} fullWidth>{item.name}</Button>
-          ))}
-          {currentUser ? (
-            <Button onClick={handleLogout} fullWidth color="error">Logout</Button>
-          ) : (
-            <Button href="/sign" fullWidth>Log in / Sign up</Button>
-          )}
-        </Box>
-      </Drawer>
-
-      <Container maxWidth="lg" marginTop={4} sx={{
-        minHeight: '80vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}>
-        {!currentUser ? (
-          <Box sx={{
-            textAlign: 'center',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'center',
-            minHeight: '70vh'
-          }}>
-            <Typography variant="h3" gutterBottom>Start Your Career</Typography>
-            <Typography variant="h6" color="textSecondary" paragraph>
-              Build a Resume/CV in 5 minutes.
-            </Typography>
-            <Button href="/sign" variant="contained" size="large">
-              Get Started
-            </Button>
-          </Box>
-        ) : (
-          <Paper sx={{
-            p: 4,
-            borderRadius: 3,
-            width: '100%',
-            maxWidth: '1200px',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}>
-            <Grid container spacing={3} marginBottom={4} alignItems="stretch">
-              {/* Welcome Box */}
-              <Grid item xs={12} md={4}>
-                <Paper sx={{
-                  p: 2, bgcolor: '#003366', color: '#fff',
-                  borderRadius: 2, height: '100%',
-                  display: 'flex', flexDirection: 'column', justifyContent: 'space-between'
+      {!currentUser ? (
+        <Box sx={{
+          background: 'linear-gradient(to bottom, #ffffff, #f5f9ff)',
+          minHeight: 'calc(100vh - 64px)',
+          display: 'flex',
+          alignItems: 'center',
+          py: 8
+        }}>
+          <Container maxWidth="lg">
+            <Grid container spacing={6} alignItems="center">
+              <Grid item xs={12} md={6}>
+                <Typography variant="h2" component="h1" sx={{ 
+                  fontWeight: 'bold', 
+                  mb: 3,
+                  fontSize: { xs: '2.5rem', md: '3.5rem' }
                 }}>
-                  <Typography variant="h6" fontWeight="bold">
-                    Land a better job faster!
-                  </Typography>
-                  <Typography sx={{ mt: 2, fontWeight: 'bold' }}>
-                    👋 Welcome, {currentUser.fullName}!
-                  </Typography>
-                  <Typography sx={{ mt: 1, fontSize: 14, color: '#cfd8dc' }}>
-                    Benefit from expert support and feedback during every step of your job search.
-                  </Typography>
-                  <Button
-                    variant="contained"
-                    fullWidth
-                    sx={{
-                      bgcolor: '#fff', color: '#003366', mt: 3, fontWeight: 'bold',
-                      '&:hover': { bgcolor: '#e0e0e0' },
-                    }}
-                  >
-                    Start your search
-                  </Button>
-                </Paper>
-              </Grid>
-
-              {/* Tasks Box */}
-              <Grid item xs={12} md={4}>
-                <Paper sx={{
-                  p: 2, bgcolor: '#f5faff', borderRadius: 2,
-                  display: 'flex', flexDirection: 'column', height: '100%'
-                }}>
-                  <Typography variant="h6" fontWeight="bold" sx={{ color: '#003366', mb: 2 }}>
-                    Tasks
-                  </Typography>
-
-                  {loadingTasks ? (
-                    <Box sx={{ textAlign: 'center', py: 4 }}>
-                      <CircularProgress />
-                      <Typography sx={{ mt: 2 }}>Loading tasks...</Typography>
-                    </Box>
-                  ) : tasks.length === 0 ? (
-                    <Typography>No tasks available.</Typography>
-                  ) : (
-                    <Box sx={{ flex: 1, overflowY: 'auto', maxHeight: '250px' }}>
-                      {tasks.map((task, idx) => (
-                        <Box key={idx} sx={{ mb: 2 }}>
-                          <a href="/user/test" style={{ textDecoration: 'none' }}>
-                            <Typography variant="subtitle1" fontWeight="bold" sx={{ color: '#003366' }}>
-                              {task.question || task.title || 'Untitled Task'}
-                            </Typography>
-                          </a>
-                          <Typography variant="body2" color="text.secondary">
-                            {task.duration ? `Time Limit: ${task.duration} seconds` : 'No time limit'}
-                          </Typography>
-                          <Divider sx={{ my: 1 }} />
-                        </Box>
-                      ))}
-                    </Box>
-                  )}
-                </Paper>
-              </Grid>
-
-              {/* Coaching Box */}
-              <Grid item xs={12} md={4}>
-                <Paper sx={{
-                  p: 2, bgcolor: '#f9f9f9', borderRadius: 2,
-                  display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-                  height: '100%'
-                }}>
-                  <Typography variant="h6" fontWeight="bold" sx={{ color: '#003366', mb: 2 }}>
-                    Coaching
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-                    Our coaches will provide you with step-by-step support to achieve your goal.
-                  </Typography>
-                  <Box sx={{ flexGrow: 1 }}>
-                    <img
-                      src="https://upload.wikimedia.org/wikipedia/commons/9/99/Sample_User_Icon.png"
-                      alt="Coaching Thumbnail"
-                      style={{ width: '8%', borderRadius: 8 }}
-                    />
-                    <Typography variant="subtitle1" fontWeight="bold" sx={{ mt: 2 }}>
-                      Self-assessment
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary">
-                      Sharpen your focus on where you want to go.
-                    </Typography>
+                  Land a better job.<br />
+                  <Box component="span" sx={{ color: 'primary.main' }}>faster!</Box>
+                </Typography>
+                
+                <Box sx={{ mb: 4 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <Box sx={{ width: 8, height: 8, bgcolor: 'primary.main', borderRadius: '50%', mr: 2 }} />
+                    <Typography variant="body1">Get more headhunter contacts</Typography>
                   </Box>
-                  <Button variant="outlined" sx={{ mt: 2 }}>
-                    Explore Classes
-                  </Button>
-                </Paper>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <Box sx={{ width: 8, height: 8, bgcolor: 'primary.main', borderRadius: '50%', mr: 2 }} />
+                    <Typography variant="body1">Targeted guidance</Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Box sx={{ width: 8, height: 8, bgcolor: 'primary.main', borderRadius: '50%', mr: 2 }} />
+                    <Typography variant="body1">Confidence</Typography>
+                  </Box>
+                </Box>
+                
+                <Button 
+                  onClick={() => setShowLandingAuthPopup(true)} 
+                  variant="contained" 
+                  size="large"
+                  sx={{ 
+                    px: 6,
+                    py: 1.5,
+                    fontSize: '1.1rem',
+                    mb: 3
+                  }}
+                >
+                  Sign up for free
+                </Button>
+                
+                <Typography variant="body2" color="textSecondary">
+                  Free Resume Review
+                </Typography>
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <Box sx={{ 
+                  borderRadius: 4,
+                  height: '400px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden'
+                }}>
+                  <img 
+                    src="https://images.pexels.com/photos/6837641/pexels-photo-6837641.jpeg?_gl=1*1ba1y4d*_ga*MjEyMjIxMDExNC4xNzUzMDk3MTc3*_ga_8JE65Q40S6*czE3NTMwOTcxNzYkbzEkZzEkdDE3NTMwOTcxODIkajU0JGwwJGgw" 
+                    alt="Person finding jobs"
+                    style={{ 
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover'
+                    }}
+                  />
+                </Box>
               </Grid>
             </Grid>
-          </Paper>
-        )}
-      </Container>
+          </Container>
+        </Box>
+      ) : (
+        <Container maxWidth="lg" sx={{ py: 4 }}>
+          <Grid container spacing={4}>
+            {/* Main Content Column */}
+            <Grid item xs={12} md={8}>
+              {/* Welcome Section */}
+              <Paper sx={{ p: 3, mb: 3, borderRadius: 2, boxShadow: 1 }}>
+                <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold' }}>
+                  Land a better job faster!
+                </Typography>
+                <Typography variant="body1" paragraph>
+                  Welcome, {currentUser.fullName}!<br />
+                  Benefit from expert support and feedback during every step of your job search.
+                </Typography>
+                <Button 
+                  variant="contained" 
+                  size="large"
+                  sx={{ mt: 2 }}
+                >
+                  Start your search
+                </Button>
+              </Paper>
+
+              {/* Tasks Section (MODIFIED) */}
+              <Paper sx={{
+                p: 2,
+                bgcolor: '#f5faff',
+                borderRadius: 2,
+                display: 'flex',
+                flexDirection: 'column',
+                mb: 3 // Added margin-bottom
+              }}>
+                <Typography variant="h6" fontWeight="bold" sx={{ color: '#003366', mb: 2 }}>
+                  Tasks
+                </Typography>
+
+                {loadingTasks ? (
+                  <Box sx={{ textAlign: 'center', py: 4 }}>
+                    <CircularProgress />
+                    <Typography sx={{ mt: 2 }}>Loading tasks...</Typography>
+                  </Box>
+                ) : tasks.length === 0 ? (
+                  <Typography sx={{ py: 4, textAlign: 'center' }}>
+                    No tasks available.
+                  </Typography>
+                ) : (
+                  <Box sx={{ overflowY: 'auto', maxHeight: '250px' }}>
+                    {tasks.map((task, idx) => (
+                      <Box key={idx} sx={{ mb: 2 }}>
+                        <a href={`/user/test?taskId=${task._id || idx}`} style={{ textDecoration: 'none' }}>
+                          <Typography variant="subtitle1" fontWeight="bold" sx={{ color: '#003366' }}>
+                            {task.title || task.question || 'Untitled Task'}
+                          </Typography>
+                        </a>
+                        <Typography variant="body2" color="text.secondary">
+                          {task.duration ? `Time Limit: ${task.duration} seconds` : 'No time limit'}
+                        </Typography>
+                        <Divider sx={{ my: 1 }} />
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+              </Paper>
+              
+              {/* Quick Links (MOVED HERE) */}
+              <Paper sx={{ p: 3, mb: 3, borderRadius: 2, boxShadow: 1 }}>
+                <Typography variant="h6" component="h2" gutterBottom sx={{ fontWeight: 'bold' }}>
+                  Quick links
+                </Typography>
+                <Typography variant="body2" color="text.secondary" paragraph>
+                  Important links related to your searches and bookmarks.
+                </Typography>
+                
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <Checkbox />
+                  <Typography>New job search</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <Checkbox checked />
+                  <Typography>Previous job searches (1)</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Checkbox checked />
+                  <Typography>Saved searches (0)</Typography>
+                </Box>
+              </Paper>
+            </Grid>
+
+            {/* Coaching Section (Sidebar) */}
+            <Grid item xs={12} md={4}>
+              <Paper sx={{ p: 3, height: '100%', borderRadius: 2, boxShadow: 1 }}>
+                <Typography variant="h6" component="h2" gutterBottom sx={{ fontWeight: 'bold' }}>
+                  Coaching
+                </Typography>
+                <Typography variant="body2" color="text.secondary" paragraph>
+                  Our coaches will provide you with step-by-step support to achieve your goal. You don't have to do it alone.
+                </Typography>
+
+                <Box sx={{ mb: 3, p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+                  <Typography variant="subtitle1" fontWeight="bold">MasterClasses</Typography>
+                  <Chip label="Free" size="small" sx={{ mt: 1 }} />
+                </Box>
+
+                <Box sx={{ p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+                  <Typography variant="subtitle1" fontWeight="bold">MasterClass</Typography>
+                  <Typography variant="subtitle1" fontWeight="bold" sx={{ mt: 1 }}>Self-assessment</Typography>
+                  <Typography variant="body2" sx={{ mt: 1 }}>
+                    Sharpen your focus on where you want to go
+                  </Typography>
+                </Box>
+              </Paper>
+            </Grid>
+          </Grid>
+        </Container>
+      )}
 
       <CompleteProfilePopup open={showPopup} onClose={handleClosePopup} />
-
       <LandingAuthPopup
         open={showLandingAuthPopup && !currentUser}
         onClose={() => setShowLandingAuthPopup(false)}
