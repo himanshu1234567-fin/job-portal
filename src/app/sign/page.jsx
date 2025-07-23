@@ -13,6 +13,10 @@ import {
 } from '@mui/material';
 import { useRouter } from 'next/navigation';
 <<<<<<< HEAD
+=======
+
+import { apiFetch } from '../utils/api';
+>>>>>>> 831649e28208e87eb42bf6546cea805d7df83b06
 
 const initialForm = {
   fullName: '',
@@ -22,8 +26,6 @@ const initialForm = {
   signInEmail: '',
   signInPassword: '',
 };
-=======
->>>>>>> 9033fb1ca8285e267fab1623bdb9d651252c828f
 
 export default function SignPage() {
   const [tab, setTab] = useState(0);

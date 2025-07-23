@@ -22,40 +22,30 @@ import {
   useMediaQuery,
   Divider,
   Avatar,
-  CircularProgress
+  CircularProgress,
+  Alert
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import TuneIcon from '@mui/icons-material/Tune';
 import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
-import BookmarkIcon from '@mui/icons-material/Bookmark'; // Filled icon
+import BookmarkIcon from '@mui/icons-material/Bookmark';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import MessageIcon from '@mui/icons-material/Message';
 import CloseIcon from '@mui/icons-material/Close';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import BusinessIcon from '@mui/icons-material/Business';
 import { useRouter } from 'next/navigation';
+import { formatDistanceToNow } from 'date-fns';
 import ApplyPopup from '../../../components/ApplyPopup';
-import Navbar from '../../../components/Navbar'; // Import the Navbar
-import LandingAuthPopup from '../../../components/LandingAuthPopup'; // Import for Navbar functionality
+import Navbar from '../../../components/Navbar';
+import LandingAuthPopup from '../../../components/LandingAuthPopup';
 
-const initialJob = {
-    id: 1,
-    title: 'ROR Developer',
-    premiumOnly: true,
-    location: 'Indore',
-    type: 'On-site',
-    salary: 'INR 675,000 - 900,000',
-    workModel: 'Full time',
-    posted: '30+ days ago',
-    summary: "An established industry player in the BPO sector is seeking a skilled Ruby on Rails developer to join their dynamic team in Indore. This role is pivotal in managing server-side logic and ensuring seamless data interchange between users and the server. You'll have the opportunity to work with cutting-edge technologies, tackle complex challenges, and contribute to the development of high-performance applications. If you are passionate about coding and eager to make a significant impact in a rapidly growing company, this position offers an exciting chance to elevate your career while working in a collaborative environment.",
-    about: "We are a leading firm in the business process outsourcing industry with over 20 years of experience. Our company prides itself on innovation, efficiency, and a client-first approach. We have a global presence with offices in 5 countries and a team of over 5,000 dedicated professionals.",
-    recruiter: {
-        name: 'Jane Doe',
-        title: 'Senior Technical Recruiter',
-        bio: 'Jane has been with the company for 5 years, specializing in sourcing top talent for our technology departments. She is passionate about connecting skilled developers with exciting opportunities.'
-    }
+// Helper function to remove HTML tags from the description
+const stripHtml = (html) => {
+    if (!html) return '';
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    return doc.body.textContent || "";
 };
-
 
 // Main component for the Job Search Page
 const JobSearchPage = () => {
@@ -66,18 +56,24 @@ const JobSearchPage = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const router = useRouter();
 
-  const [jobs, setJobs] = useState([initialJob]); // Represents search results
+  // API State
+  const [jobs, setJobs] = useState([]);
+  const [selectedJob, setSelectedJob] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // User-specific State
   const [bookmarkedJobs, setBookmarkedJobs] = useState([]);
   const [appliedJobs, setAppliedJobs] = useState([]);
   const [notInterestedJobs, setNotInterestedJobs] = useState([]);
 
-
-  // State and logic from ResumeBuilder for Navbar functionality
+  // Auth & Navbar State
   const [mobileOpen, setMobileOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [showLandingAuthPopup, setShowLandingAuthPopup] = useState(false);
   const [profileCompletion, setProfileCompletion] = useState(0);
 
+  // Effect to check for logged-in user
   useEffect(() => {
     const storedUser = localStorage.getItem('currentUser');
     if (storedUser && storedUser !== 'undefined') {
@@ -92,6 +88,39 @@ const JobSearchPage = () => {
     }
   }, []);
 
+  // Fetch Data from Remotive API (No Key Needed)
+  useEffect(() => {
+    const fetchJobs = async () => {
+      setLoading(true);
+      setError(null);
+      const url = 'https://remotive.com/api/remote-jobs?limit=50';
+      
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const data = await response.json();
+        setJobs(data.jobs);
+        if (data.jobs && data.jobs.length > 0) {
+          setSelectedJob(data.jobs[0]);
+        }
+      } catch (err) {
+        setError(err.message);
+        console.error("Failed to fetch jobs:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchJobs();
+  }, []);
+
+  // All original handlers are restored below
+  const handleSelectJob = (job) => {
+    setSelectedJob(job);
+  };
+  
   const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
 
   const handleLogout = () => {
@@ -100,11 +129,10 @@ const JobSearchPage = () => {
     setCurrentUser(null);
   };
   
-  // Handlers for JobSearchPage specific functionality
   const handleTabChange = (event, newIndex) => {
     handleAuthRequiredClick(() => {
         setTabIndex(newIndex);
-    }, newIndex === 0); // Allow search tab without auth
+    }, newIndex === 0);
   };
 
   const handleDetailTabChange = (event, newIndex) => {
@@ -150,69 +178,112 @@ const JobSearchPage = () => {
     });
   };
 
-  const handleToggleNotInterested = (jobToHide) => {
+  // --- UPDATED Not Interested Handler ---
+  const handleToggleNotInterested = (jobToToggle) => {
     handleAuthRequiredClick(() => {
-        // Add to not interested list if not already there
-        if (!notInterestedJobs.some(job => job.id === jobToHide.id)) {
-            setNotInterestedJobs(prev => [...prev, jobToHide]);
+      const isAlreadyNotInterested = notInterestedJobs.some(job => job.id === jobToToggle.id);
+
+      if (isAlreadyNotInterested) {
+        // ---- Move it BACK to the main jobs list ----
+        setNotInterestedJobs(prev => prev.filter(job => job.id !== jobToToggle.id));
+        setJobs(prev => [jobToToggle, ...prev]);
+        // If the right panel was showing this job, keep it selected
+        if (selectedJob && selectedJob.id === jobToToggle.id) {
+            // No change needed, it's still the selected job
         }
-        // Remove from main jobs list and bookmarked list
-        setJobs(prev => prev.filter(job => job.id !== jobToHide.id));
-        setBookmarkedJobs(prev => prev.filter(job => job.id !== jobToHide.id));
+      } else {
+        // ---- Move it TO the not interested list (original behavior) ----
+        setNotInterestedJobs(prev => [jobToToggle, ...prev]);
+        setJobs(prev => prev.filter(job => job.id !== jobToToggle.id));
+        setBookmarkedJobs(prev => prev.filter(job => job.id !== jobToToggle.id));
+
+        // If the job being hidden is the currently selected one, select the next available job
+        if (selectedJob && selectedJob.id === jobToToggle.id) {
+            const currentJobs = jobs.filter(job => job.id !== jobToToggle.id);
+            setSelectedJob(currentJobs.length > 0 ? currentJobs[0] : null);
+        }
+      }
     });
   };
-
-  const renderJobList = (jobList) => {
-    if (jobList.length === 0) {
-        let message = "No results found.";
-        if (tabIndex === 1) message = "You haven't bookmarked any jobs yet.";
-        if (tabIndex === 2) message = "You haven't applied for any jobs yet.";
-        if (tabIndex === 3) message = "No jobs marked as not interested.";
-
-        return (
-            <Paper elevation={2} sx={{ p: 3, borderRadius: '12px', textAlign: 'center' }}>
-                <Typography color="text.secondary">{message}</Typography>
-            </Paper>
-        );
+  
+  const renderJobList = () => {
+    if (loading) {
+      return <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}><CircularProgress /></Box>;
+    }
+    if (error) {
+      return <Alert severity="error">Failed to load jobs: {error}</Alert>;
+    }
+    
+    let jobListToRender = [];
+    let message = "No results found.";
+    
+    // Logic to select the correct list based on the active tab
+    switch (tabIndex) {
+        case 0:
+            jobListToRender = jobs;
+            break;
+        case 1:
+            jobListToRender = bookmarkedJobs;
+            message = "You haven't bookmarked any jobs yet.";
+            break;
+        case 2:
+            jobListToRender = appliedJobs;
+            message = "You haven't applied for any jobs yet.";
+            break;
+        case 3:
+            jobListToRender = notInterestedJobs;
+            message = "No jobs marked as not interested.";
+            break;
+        default:
+            jobListToRender = jobs;
+    }
+    
+    if (jobListToRender.length === 0) {
+        return <Paper elevation={2} sx={{ p: 3, borderRadius: '12px', textAlign: 'center' }}><Typography color="text.secondary">{message}</Typography></Paper>;
     }
 
-    return jobList.map(job => {
+    return jobListToRender.map(job => {
         const isBookmarked = bookmarkedJobs.some(bm => bm.id === job.id);
+        const isSelected = selectedJob && selectedJob.id === job.id;
+        
         return (
-            <Paper key={job.id} elevation={2} sx={{ p: 2, mb: 2, borderRadius: '12px', border: '2px solid', borderColor: 'primary.main' }}>
+             <Paper 
+                key={job.id} 
+                elevation={isSelected ? 6 : 2} 
+                sx={{ p: 2, mb: 2, borderRadius: '12px', border: '2px solid', borderColor: isSelected ? 'primary.main' : 'transparent', cursor: 'pointer', '&:hover': { borderColor: 'primary.light' } }}
+                onClick={() => handleSelectJob(job)}
+             >
                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
                     <div>
                         <Typography variant="h6" fontWeight="bold">{job.title}</Typography>
-                        <Typography variant="body2" color="text.secondary">{job.premiumOnly ? "For Premium Members only" : ""}</Typography>
+                        <Typography variant="body2" color="text.secondary">{job.company_name}</Typography>
                     </div>
                     <Box>
-                        <IconButton size="small" onClick={() => handleToggleBookmark(job)}>
-                            {isBookmarked ? <BookmarkIcon color="primary" /> : <BookmarkBorderIcon />}
-                        </IconButton>
-                        <IconButton size="small" onClick={() => handleToggleNotInterested(job)}>
+                        {tabIndex !== 3 && ( // Don't show bookmark icon in "not interested" tab for simplicity
+                           <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleToggleBookmark(job); }}>
+                               {isBookmarked ? <BookmarkIcon color="primary" /> : <BookmarkBorderIcon />}
+                           </IconButton>
+                        )}
+                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleToggleNotInterested(job); }}>
                             <VisibilityOffIcon />
                         </IconButton>
                     </Box>
                 </Box>
                 <Box sx={{ display: 'flex', gap: 1, my: 2, flexWrap: 'wrap' }}>
-                    <Chip label={job.location} size="small" />
-                    <Chip label={job.type} size="small" />
-                    <Chip label={job.salary} size="small" />
-                    <Chip label={job.workModel} size="small" />
+                    <Chip label={job.candidate_required_location} size="small" />
+                    <Chip label={job.job_type.replace(/_/g, ' ')} size="small" />
+                    <Chip label="Remote" size="small" variant="outlined" color="success" />
                 </Box>
-                <Typography variant="caption" color="text.secondary">{job.posted}</Typography>
+                <Typography variant="caption" color="text.secondary">
+                    Posted {formatDistanceToNow(new Date(job.publication_date), { addSuffix: true })}
+                </Typography>
             </Paper>
         );
     });
   };
 
-  const isCurrentJobBookmarked = bookmarkedJobs.some(job => job.id === initialJob.id);
-  
-  const showRightPanel = 
-    (tabIndex === 0 && jobs.length > 0) ||
-    (tabIndex === 1 && bookmarkedJobs.length > 0) ||
-    (tabIndex === 2 && appliedJobs.length > 0) ||
-    (tabIndex === 3 && notInterestedJobs.length > 0);
+  const isCurrentJobBookmarked = selectedJob && bookmarkedJobs.some(job => job.id === selectedJob.id);
+  const showRightPanel = !loading && !error && selectedJob;
 
   return (
     <Box sx={{ flexGrow: 1 }}>
@@ -225,7 +296,7 @@ const JobSearchPage = () => {
       />
       <Box sx={{ backgroundColor: '#f8f9fa', py: 4 }}>
         <Container maxWidth="lg">
-          {/* Search Filters Section */}
+          {/* Search Filters Section Restored */}
           <Paper elevation={2} sx={{ p: 2, mb: 3, borderRadius: '12px' }}>
             <Grid container spacing={2} alignItems="center">
               <Grid item xs={12} md={3}>
@@ -297,7 +368,6 @@ const JobSearchPage = () => {
             </Grid>
           </Paper>
 
-          {/* Tabs Navigation */}
           <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
             <Tabs value={tabIndex} onChange={handleTabChange} aria-label="job search tabs">
               <Tab label="Search" />
@@ -307,46 +377,39 @@ const JobSearchPage = () => {
             </Tabs>
           </Box>
 
-          {/* Main Content */}
           <Grid container spacing={3}>
-            {/* Left Column: Job List */}
             <Grid item xs={12} md={showRightPanel ? 5 : 12}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                  <Typography variant="body2" color="text.secondary">1 results | <Button variant="text" size="small" sx={{textTransform: 'none'}} onClick={() => handleAuthRequiredClick()}>Save search</Button></Typography>
-                  <Button variant="text" size="small" sx={{textTransform: 'none'}} onClick={() => handleAuthRequiredClick()}>Saved searches (1)</Button>
+                  <Typography variant="body2" color="text.secondary">{!loading && `${jobs.length} results`}</Typography>
               </Box>
-              {tabIndex === 0 && renderJobList(jobs)}
-              {tabIndex === 1 && renderJobList(bookmarkedJobs)}
-              {tabIndex === 2 && renderJobList(appliedJobs)}
-              {tabIndex === 3 && renderJobList(notInterestedJobs)}
+              {renderJobList()}
             </Grid>
 
-            {/* Right Column: Job Details, Resume Promo, and Tabbed Info */}
             {showRightPanel && (
               <Grid item xs={12} md={7}>
-                 <Paper elevation={2} sx={{ p: 3, borderRadius: '12px' }}>
-                    {/* Job Details Section */}
+                 <Paper elevation={2} sx={{ p: 3, borderRadius: '12px', position: 'sticky', top: '20px' }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                        <Typography variant="h5" fontWeight="bold">{initialJob.title}</Typography>
+                        <Typography variant="h5" fontWeight="bold">{selectedJob.title}</Typography>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <IconButton size="small" onClick={() => handleToggleBookmark(initialJob)}>
+                            <IconButton size="small" onClick={() => handleToggleBookmark(selectedJob)}>
                               {isCurrentJobBookmarked ? <BookmarkIcon color="primary" /> : <BookmarkBorderIcon />}
                             </IconButton>
                             <Button variant="contained" color="primary" onClick={handleOpenPopup}>Apply now</Button>
                         </Box>
                     </Box>
-                    <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>{initialJob.premiumOnly ? "For Premium Members only" : ""}</Typography>
+                    <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>{selectedJob.company_name}</Typography>
                     <Box sx={{ display: 'flex', gap: 1, my: 2, flexWrap: 'wrap' }}>
-                        <Chip label={initialJob.location} />
-                        <Chip label={initialJob.type} />
-                        <Chip label={initialJob.salary} />
-                        <Chip label={initialJob.workModel} />
+                        <Chip label={selectedJob.candidate_required_location} />
+                        <Chip label={selectedJob.job_type.replace(/_/g, ' ')} />
+                        {selectedJob.salary && <Chip label={selectedJob.salary} />}
                     </Box>
-                    <Typography variant="body2" color="text.secondary">{initialJob.posted}</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                        Posted {formatDistanceToNow(new Date(selectedJob.publication_date), { addSuffix: true })}
+                    </Typography>
                     
                     <Divider sx={{ my: 3 }} />
 
-                    {/* Generate Resume Promo Section */}
+                    {/* Generate Resume Promo Section Restored */}
                     <Box sx={{ p: 2, borderRadius: '8px', backgroundColor: '#f0f4ff' }}>
                         <Grid container spacing={2} alignItems="center">
                             <Grid item xs={12} sm={2}>
@@ -366,80 +429,46 @@ const JobSearchPage = () => {
 
                     <Divider sx={{ my: 3 }} />
 
-                    {/* Tabbed Info Section */}
                     <Box>
                         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
                             <Tabs value={detailTab} onChange={handleDetailTabChange} aria-label="job detail tabs">
-                                <Tab label="Job summary" sx={{textTransform: 'none'}} />
+                                <Tab label="Job description" sx={{textTransform: 'none'}} />
                                 <Tab label="About the company" sx={{textTransform: 'none'}} />
                                 <Tab label="Recruiter" sx={{textTransform: 'none'}} />
                             </Tabs>
                         </Box>
-
-                        {/* Tab Content */}
-                        <Box sx={{ pt: 3 }}>
+                        <Box sx={{ pt: 3, maxHeight: '400px', overflowY: 'auto' }}>
                             {detailTab === 0 && (
-                                <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.7 }}>
-                                  {initialJob.summary}
+                                <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+                                  {stripHtml(selectedJob.description)}
                                 </Typography>
                             )}
                             {detailTab === 1 && (
                                 <Box>
                                     <Box sx={{display: 'flex', alignItems: 'center', mb: 2}}>
-                                        <Avatar sx={{ width: 56, height: 56, mr: 2, bgcolor: 'primary.light' }}>
+                                        <Avatar sx={{ width: 56, height: 56, mr: 2, bgcolor: 'primary.light' }} src={selectedJob.company_logo}>
                                             <BusinessIcon />
                                         </Avatar>
-                                        <Typography variant="h6" fontWeight="bold">BPO Sector Leader Inc.</Typography>
+                                        <Typography variant="h6" fontWeight="bold">{selectedJob.company_name}</Typography>
                                     </Box>
                                     <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.7 }}>
-                                        {initialJob.about}
+                                        {`Category: ${selectedJob.category}`}
                                     </Typography>
                                 </Box>
                             )}
                             {detailTab === 2 && (
-                                 <Box>
-                                    <Box sx={{display: 'flex', alignItems: 'center', mb: 2}}>
-                                        <Avatar sx={{ width: 56, height: 56, mr: 2 }} alt={initialJob.recruiter.name} src="/static/images/avatar/1.jpg" />
-                                        <Box>
-                                            <Typography variant="h6" fontWeight="bold">{initialJob.recruiter.name}</Typography>
-                                            <Typography variant="body2" color="text.secondary">{initialJob.recruiter.title}</Typography>
-                                        </Box>
-                                    </Box>
-                                    <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.7 }}>
-                                        {initialJob.recruiter.bio}
-                                    </Typography>
-                                </Box>
+                                <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.7 }}>
+                                    Recruiter information is not available from this API source.
+                                </Typography>
                             )}
                         </Box>
                     </Box>
-                </Paper>
+                 </Paper>
               </Grid>
             )}
           </Grid>
-
-          {/* Floating Feedback Button */}
-          <Fab 
-              color="primary" 
-              aria-label="feedback" 
-              sx={{ 
-                  position: 'fixed', 
-                  bottom: 40, 
-                  right: isMobile? 16 : 40,
-                  transform: 'rotate(-90deg)',
-                  transformOrigin: 'bottom right',
-                  borderRadius: '8px 8px 0 0',
-                  height: 'auto',
-                  width: 'auto',
-                  px: 2,
-                  py: 1
-              }}
-          >
-              <MessageIcon sx={{transform: 'rotate(90deg)', mr: 1}}/>
-              <Typography sx={{textTransform: 'none'}}>Feedback</Typography>
-          </Fab>
           
           <ApplyPopup open={openPopup} handleClose={handleClosePopup} />
-          
           <LandingAuthPopup
             open={showLandingAuthPopup && !currentUser}
             onClose={() => setShowLandingAuthPopup(false)}
