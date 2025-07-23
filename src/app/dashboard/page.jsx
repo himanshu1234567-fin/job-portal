@@ -15,9 +15,10 @@ import {
   Grid,
   Button,
 }from '@mui/material';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
 import axios from 'axios';
 import { useEffect, useState } from 'react';
-import UserDetailsModal from '../dashboard/userDetailsPopup/page.jsx';
+import UserDetailsModal from '../dashboard/userDetailsPopup/page'
 import Link from 'next/link';
 
 export default function AdminDashboard() {
@@ -31,7 +32,7 @@ export default function AdminDashboard() {
       try {
         const token = localStorage.getItem('authToken');
         const response = await axios.get(
-          'http://localhost:3000/api/admin-dashboard',
+          'http://localhost:5000/api/admin-dashboard',
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setUsers(response.data.dashboards || []);
@@ -74,11 +75,14 @@ export default function AdminDashboard() {
             <Typography variant='subtitle1' color='text.secondary'>Candidate Management</Typography>
           </Grid>
            <Grid item>
-      <Link href="/admin/test" passHref>
-        <Button variant="contained">
-          Add test
+        <Button variant="contained" href="/admin/TestPage" passHref>
+          <SmartToyIcon /> Assign test
         </Button>
-      </Link>
+      
+        <Button variant="contained" href="/admin/test" passHref style={{ marginLeft: '16px' }}>
+          <SmartToyIcon />  Create test with AI
+        </Button>
+      
     </Grid>
         </Grid>
       </Paper>
@@ -167,11 +171,11 @@ export default function AdminDashboard() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {[...new Set(users.filter(u => getValue(u.status) === 'Active').map(u => getValue(u.desirableJob.desirableJob)))]
+              {[...new Set(users.filter(u => getValue(u.status) === 'Active').map(u => getValue(u.desirableJob?.desirableJob)))]
                 .map((job, idx) => (
                   <TableRow key={idx}>
                     <TableCell>{job}</TableCell>
-                    <TableCell>{users.filter(u => getValue(u.status) === 'Active' && getValue(u.desirableJob.desirableJob) === job).length}</TableCell>
+                    <TableCell>{users.filter(u => getValue(u.status) === 'Active' && getValue(u.desirableJob?.desirableJob) === job).length}</TableCell>
                   </TableRow>
                 ))}
             </TableBody>
