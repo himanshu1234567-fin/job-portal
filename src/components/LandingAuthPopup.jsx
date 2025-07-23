@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useEffect } from 'react';
 import {
   Box, Typography, TextField, Button, Tabs, Tab, Alert,
@@ -39,7 +41,8 @@ export default function LandingAuthPopup({ open, onSuccess, onClose }) {
   const completeLogin = () => {
     onSuccess();
     onClose();
-    router.push('/');
+    // Refresh the current route to reflect the new login state
+    router.refresh();
   };
 
   const handleSignUp = async (e) => {
@@ -53,7 +56,7 @@ export default function LandingAuthPopup({ open, onSuccess, onClose }) {
       return setError('Passwords do not match.');
 
     try {
-      const res = await fetch('http://localhost:3000/api/auth/register', {
+      const res = await fetch('http://localhost:5000/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fullName, email, password, confirmPassword }),
@@ -82,7 +85,7 @@ export default function LandingAuthPopup({ open, onSuccess, onClose }) {
       return setError('Please enter both email and password.');
 
     try {
-      const res = await fetch('http://localhost:3000/api/auth/login', {
+      const res = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: signInEmail, password: signInPassword }),

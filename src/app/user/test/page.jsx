@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Button, Card, CardContent, Typography, Radio, RadioGroup,
-  FormControlLabel, Checkbox, LinearProgress, Divider
+  FormControlLabel, Checkbox, LinearProgress, Divider, CircularProgress
 } from '@mui/material';
 
 const TestPage = () => {
@@ -14,20 +14,36 @@ const TestPage = () => {
   const [showResult, setShowResult] = useState(false);
   const [totalTime, setTotalTime] = useState(0);
   const [timer, setTimer] = useState(0);
+  const [loading, setLoading] = useState(true); // Added loading state
 
   useEffect(() => {
     const fetchQuestions = async () => {
+      setLoading(true);
       try {
         const token = localStorage.getItem('authToken');
-
-        const res = await fetch('http://localhost:3000/api/questions', {
+        const response = await fetch('http://localhost:5000/api/questions', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
         });
+        
+        const json = await response.json();
 
-        const json = await res.json();
-        const fetchedQuestions = Array.isArray(json.data) ? json.data : [];
+        if (!response.ok) {
+            console.error('API Error:', json.message || 'Failed to fetch');
+            setQuestions([]);
+            setLoading(false);
+            return;
+        }
+        
+        let fetchedQuestions = [];
+        if (Array.isArray(json)) {
+            fetchedQuestions = json;
+        } else if (Array.isArray(json.data)) {
+            fetchedQuestions = json.data;
+        } else if (Array.isArray(json.questions)) {
+            fetchedQuestions = json.questions;
+        }
 
         setQuestions(fetchedQuestions);
 
@@ -39,8 +55,12 @@ const TestPage = () => {
         const finalDuration = totalDuration > 0 ? totalDuration : 60;
         setTotalTime(finalDuration);
         setTimer(finalDuration);
+
       } catch (error) {
         console.error('Failed to fetch questions:', error);
+        setQuestions([]); // Ensure questions are empty on error
+      } finally {
+        setLoading(false); // Stop loading in all cases
       }
     };
 
@@ -99,7 +119,6 @@ const TestPage = () => {
       const correctAnswers = question.options
         ?.filter(opt => opt.isCorrect)
         ?.map(opt => opt.text) || [];
-
       const userAnswer = userAnswers[question.title];
 
       if (question.allowMultipleCorrect) {
@@ -118,52 +137,38 @@ const TestPage = () => {
     setShowResult(true);
   };
 
+  // Show a loading indicator while fetching
+  if (loading) {
+      return (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
+              <CircularProgress />
+              <Typography sx={{ ml: 2 }}>Loading Questions...</Typography>
+          </Box>
+      );
+  }
+
+  // Show a message if no questions were found after loading
   if (questions.length === 0) {
     return (
-      <Typography sx={{ m: 4 }} variant="h6">
-        No Questions Found. Please add questions first.
+      <Typography sx={{ m: 4, textAlign: 'center' }} variant="h6">
+        No Questions Found.
       </Typography>
     );
   }
 
   if (showResult) {
     return (
-<<<<<<< HEAD
       <Box sx={{ maxWidth: 600, mx: 'auto', mt: 8, textAlign: 'center' }}>
         <Typography variant="h4" gutterBottom>Test Completed!</Typography>
         <Typography variant="h6">Your Score: {score} / {questions.length}</Typography>
-=======
-      <Box sx={{ 
-        maxWidth: 600, 
-        mx: 'auto', 
-        p: 4, 
-        textAlign: 'center',
-        boxShadow: 3,
-        borderRadius: 2,
-        mt: 4
-      }}>
-        <Typography variant="h4" gutterBottom sx={{ color: 'primary.main' }}>
-          Test Completed!
-        </Typography>
-        <Typography variant="h5" sx={{ mb: 3 }}>
-          Your Score: {score} / {questions.length}
-        </Typography>
-        <Typography variant="body1" sx={{ mb: 2 }}>
-          {score === questions.length ? 'Perfect score! 🎉' : ''}
-          {score >= questions.length * 0.7 ? 'Well done!' : ''}
-        </Typography>
-         <Button
-          variant="contained"
-          fullWidth
-          sx={{
-            bgcolor: '#fff', color: '#003366', mt: 3, fontWeight: 'bold',
-            '&:hover': { bgcolor: '#e0e0e0' },
-          }}
-          href='/'
-        >
-          Go to Home
-        </Button>
->>>>>>> 33114b60ccb165df49454b4f721267ddac3a8900
+        <Button 
+                          variant="contained" 
+                          size="large"
+                          sx={{ mt: 2 }}
+                          href='/user/ResumeBuilder'
+                        >
+                          Build your AI Resume
+                        </Button>
       </Box>
     );
   }
