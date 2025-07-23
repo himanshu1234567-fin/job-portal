@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  AppBar, Toolbar, IconButton, Button, Typography, Box, Avatar, CircularProgress, Tooltip
+  AppBar, Toolbar, IconButton, Button, Typography, Box, Avatar, CircularProgress, Tooltip, Drawer, List, ListItem, ListItemButton, ListItemText, Divider
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 
@@ -14,32 +14,23 @@ const navigation = [
 ];
 
 const ProfileAvatarWithProgress = ({ user, progress }) => {
-  // Determines the color of the progress bar based on the percentage
   const getProgressColor = (progressValue) => {
-    if (progressValue < 25) return '#d32f2f'; // Red for progress under 25%
-    if (progressValue < 50) return '#fbc02d'; // Yellow for progress between 25% and 50%
-    if (progressValue < 75) return '#ef6c00'; // Orange for progress between 50% and 75%
-    return '#2e7d32'; // Green for progress 75% and above
+    if (progressValue < 25) return '#d32f2f';
+    if (progressValue < 50) return '#fbc02d';
+    if (progressValue < 75) return '#ef6c00';
+    return '#2e7d32';
   };
 
   const progressColor = getProgressColor(progress);
 
   return (
-    <Box sx={{ 
-      position: 'relative', 
-      display: 'inline-flex',
-      '&:hover': {
-        '& .progress-percent': {
-          opacity: 1,
-        }
-      }
-    }}>
+    <Box sx={{ position: 'relative', display: 'inline-flex', '&:hover .progress-percent': { opacity: 1 } }}>
       <Avatar
         alt={user.fullName}
         sx={{
           width: 32,
           height: 32,
-          bgcolor: 'primary.main', // Set to a consistent theme color
+          bgcolor: 'primary.main',
           fontSize: '0.875rem',
         }}
       >
@@ -47,7 +38,6 @@ const ProfileAvatarWithProgress = ({ user, progress }) => {
       </Avatar>
       {progress < 100 && (
         <>
-          {/* Background track for the progress bar */}
           <CircularProgress
             variant="determinate"
             value={100}
@@ -61,14 +51,13 @@ const ProfileAvatarWithProgress = ({ user, progress }) => {
               zIndex: 0,
             }}
           />
-          {/* Foreground progress bar */}
           <CircularProgress
             variant="determinate"
             value={progress}
             size={38}
             thickness={4}
             sx={{
-              color: progressColor, // Apply the dynamic color
+              color: progressColor,
               position: 'absolute',
               top: -3,
               left: -3,
@@ -86,7 +75,7 @@ const ProfileAvatarWithProgress = ({ user, progress }) => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: progressColor, // Apply the dynamic color to the text as well
+              color: progressColor,
               fontSize: '0.6rem',
               fontWeight: 'bold',
               opacity: 0,
@@ -101,113 +90,145 @@ const ProfileAvatarWithProgress = ({ user, progress }) => {
   );
 };
 
-const Navbar = ({ currentUser, handleLogout, handleDrawerToggle, setShowLandingAuthPopup }) => {
+const Navbar = ({ currentUser, handleLogout, setShowLandingAuthPopup }) => {
   const [profileCompletePercent, setProfileCompletion] = useState(0);
   const [tooltipOpen, setTooltipOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen);
+  };
 
   useEffect(() => {
-    // Function to update profile progress from localStorage
     const updateProfileProgress = () => {
       if (currentUser && typeof window !== 'undefined') {
         const storedProgress = localStorage.getItem('profileCompletePercent');
         const progress = parseInt(storedProgress, 10) || 0;
         setProfileCompletion(progress);
-        // Set the initial state of the tooltip
-        if (progress > 0 && progress < 75) {
-          setTooltipOpen(true);
-        } else {
-          setTooltipOpen(false);
-        }
+        setTooltipOpen(progress > 0 && progress < 75);
       } else {
-        // If there's no user, reset the progress and close the tooltip
         setProfileCompletion(0);
         setTooltipOpen(false);
       }
     };
 
     updateProfileProgress();
-
-    // This event listener will trigger when localStorage is changed from another tab/window
-    const handleStorageChange = (event) => {
-        if (event.key === 'profileCompletePercent') {
-            updateProfileProgress();
-        }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-
-    // To handle same-page updates, we can use a custom event.
-    // The component that updates the localStorage should dispatch this event.
-    // Example: window.dispatchEvent(new Event("profileUpdated"));
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'profileCompletePercent') updateProfileProgress();
+    });
     window.addEventListener('profileUpdated', updateProfileProgress);
 
-    // Cleanup the event listeners when the component unmounts
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('storage', updateProfileProgress);
       window.removeEventListener('profileUpdated', updateProfileProgress);
     };
-  }, [currentUser]); // Rerun this effect if the user logs in or out
+  }, [currentUser]);
 
-  const handleTooltipOpen = () => {
-    setTooltipOpen(true);
-  };
-
-  const handleTooltipClose = () => {
-    // Only close the tooltip on mouse leave if it's not in the "always open" state
-    if (!(profileCompletePercent > 0 && profileCompletePercent < 75)) {
-      setTooltipOpen(false);
-    }
-  };
+  const drawerContent = (
+    <Box sx={{ width: 250 }} onClick={handleDrawerToggle}>
+      <List>
+        {navigation.map((item) => (
+          <ListItem key={item.name} disablePadding>
+            <ListItemButton component="a" href={item.href}>
+              <ListItemText primary={item.name} />
+            </ListItemButton>
+          </ListItem>
+        ))}
+      </List>
+      <Divider />
+      {currentUser ? (
+        <List>
+          <ListItem disablePadding>
+            <ListItemButton component="a" href="/user/profile">
+              <ListItemText primary={`Profile (${profileCompletePercent}%)`} />
+            </ListItemButton>
+          </ListItem>
+          <ListItem disablePadding>
+            <ListItemButton onClick={handleLogout}>
+              <ListItemText primary="Logout" />
+            </ListItemButton>
+          </ListItem>
+        </List>
+      ) : (
+        <List>
+          <ListItem disablePadding>
+            <ListItemButton onClick={() => setShowLandingAuthPopup(true)}>
+              <ListItemText primary="Log in / Sign up" />
+            </ListItemButton>
+          </ListItem>
+        </List>
+      )}
+    </Box>
+  );
 
   return (
-    <AppBar position="static" color="transparent" elevation={0}>
-      <Toolbar sx={{ justifyContent: 'space-between' }}>
-        <a href="/" style={{ textDecoration: 'none' }}><img
-            alt="Logo"
-            src="https://img.freepik.com/free-vector/colorful-bird-illustration-gradient_343694-1741.jpg"
-            height={40}
-          /></a>
+    <>
+      <AppBar position="static" color="transparent" elevation={0}>
+        <Toolbar sx={{ justifyContent: 'space-between' }}>
+          <a href="/" style={{ textDecoration: 'none' }}>
+            <img
+              alt="Logo"
+              src="https://img.freepik.com/free-vector/colorful-bird-illustration-gradient_343694-1741.jpg"
+              height={40}
+            />
+          </a>
 
-        <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 2, alignItems: 'center' }}>
-          {navigation.map((item) => (
-            <Button key={item.name} href={item.href} color="inherit">{item.name}</Button>
-          ))}
-
-          {currentUser ? (
-            <>
-              <Tooltip
-                title={`Your profile is ${profileCompletePercent}% complete`}
-                open={tooltipOpen}
-                onOpen={handleTooltipOpen}
-                onClose={handleTooltipClose}
-                arrow
-                placement="bottom"
-              >
-                <a href="/user/profile" style={{ textDecoration: 'none' }}>
-                  <ProfileAvatarWithProgress user={currentUser} progress={profileCompletePercent} />
-                </a>
-              </Tooltip>
-              <Button onClick={handleLogout} color="error">Logout</Button>
-            </>
-          ) : (
-            <>
+          <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 2, alignItems: 'center' }}>
+            {navigation.map((item) => (
+              <Button key={item.name} href={item.href} color="inherit">
+                {item.name}
+              </Button>
+            ))}
+            {currentUser ? (
+              <>
+                <Tooltip
+                  title={`Your profile is ${profileCompletePercent}% complete`}
+                  open={tooltipOpen}
+                  onOpen={() => setTooltipOpen(true)}
+                  onClose={() => {
+                    if (!(profileCompletePercent > 0 && profileCompletePercent < 75)) {
+                      setTooltipOpen(false);
+                    }
+                  }}
+                  arrow
+                  placement="bottom"
+                >
+                  <a href="/user/profile" style={{ textDecoration: 'none' }}>
+                    <ProfileAvatarWithProgress user={currentUser} progress={profileCompletePercent} />
+                  </a>
+                </Tooltip>
+                <Button onClick={handleLogout} color="error">Logout</Button>
+              </>
+            ) : (
               <Button onClick={() => setShowLandingAuthPopup(true)} variant="contained">
                 Log in/Sign up
               </Button>
-            </>
-          )}
-        </Box>
+            )}
+          </Box>
 
-        <IconButton
-          color="inherit"
-          edge="end"
-          onClick={handleDrawerToggle}
-          sx={{ display: { md: 'none' } }}
-        >
-          <MenuIcon />
-        </IconButton>
-      </Toolbar>
-    </AppBar>
+          <IconButton
+            color="inherit"
+            edge="end"
+            onClick={handleDrawerToggle}
+            sx={{ display: { md: 'none' } }}
+          >
+            <MenuIcon />
+          </IconButton>
+        </Toolbar>
+      </AppBar>
+
+      {/* Mobile Drawer */}
+      <Drawer
+        anchor="right"
+        open={mobileOpen}
+        onClose={handleDrawerToggle}
+        ModalProps={{
+          keepMounted: true,
+        }}
+      >
+        {drawerContent}
+      </Drawer>
+    </>
   );
 };
 

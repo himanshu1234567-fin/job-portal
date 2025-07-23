@@ -3,157 +3,168 @@
 import React from 'react';
 import {
   Dialog,
-  DialogTitle,
   DialogContent,
-  IconButton,
-  Typography,
-  Button,
-  RadioGroup,
-  FormControlLabel,
-  Radio,
-  Box,
-  Chip,
+  DialogTitle,
   Grid,
-  Paper
+  Typography,
+  Box,
+  Button,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  IconButton,
 } from '@mui/material';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CancelIcon from '@mui/icons-material/Cancel';
 import CloseIcon from '@mui/icons-material/Close';
-import TrackChangesIcon from '@mui/icons-material/TrackChanges';
-import PeopleIcon from '@mui/icons-material/People';
-import SchoolIcon from '@mui/icons-material/School';
-import ArticleIcon from '@mui/icons-material/Article';
 
-const features = [
-    {
-        icon: <TrackChangesIcon color="primary" />,
-        title: 'JobTracker',
-        description: 'Never miss a relevant job with over 4,00,000 sources available',
-        subDescription: 'Access every job from 46,018+ headhunters'
-    },
-    {
-        icon: <PeopleIcon color="primary" />,
-        title: 'Headhunter',
-        description: 'Connect with all relevant headhunters in your field'
-    },
-    {
-        icon: <SchoolIcon color="primary" />,
-        title: 'Coaching',
-        description: 'Access all Job-seeker MasterClasses created by career experts',
-        subDescription: 'Attend all webinars to learn about every aspect of a successful job search'
-    },
-    {
-        icon: <ArticleIcon color="primary" />,
-        title: 'Career Guides',
-        description: 'Unlimited access to guides, workbooks, and powerful templates'
-    }
+const plans = [
+  {
+    title: 'BASIC',
+    price: '₹599',
+    priceNum: 599,
+    color: ['#00c6ff', '#0072ff'],
+    features: [true, false, true, false, true, false],
+  },
+  {
+    title: 'STANDART',
+    price: '₹699',
+    priceNum: 699,
+    color: ['#a044ff', '#6a3093'],
+    features: [true, false, true, true, true, true],
+  },
+  {
+    title: 'PREMIUM',
+    price: '₹999',
+    priceNum: 999,
+    color: ['#ff4e50', '#f9d423'],
+    features: [true, true, true, true, true, true],
+  },
 ];
 
-const PremiumPopup = ({ open, handleClose }) => {
-  const [selectedValue, setSelectedValue] = React.useState('190');
+const featureLabels = [
+  'Lorem ipsum dolor sit amet',
+  'Consectetur adipiscing elit',
+  'Euismod tincidunt ut',
+  'Ut wisi enim ad minim',
+  'Lorem ipsum dolor sit amet',
+  'Consectetur adipiscing elit',
+];
 
-  const handleChange = (event) => {
-    setSelectedValue(event.target.value);
+
+const PricingPopup = ({ open, handleClose }) => {
+
+  // --- MODIFICATION: Helper function to dynamically load the Razorpay script ---
+  const loadRazorpayScript = (src) => {
+    return new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = src;
+      script.onload = () => {
+        resolve(true);
+      };
+      script.onerror = () => {
+        resolve(false);
+      };
+      document.body.appendChild(script);
+    });
   };
 
+  const displayRazorpay = async (plan) => {
+    // Load the script
+    const res = await loadRazorpayScript('https://checkout.razorpay.com/v1/checkout.js');
+
+    if (!res) {
+      alert('Razorpay SDK failed to load. Are you online?');
+      return;
+    }
+
+    const amountInPaise = plan.priceNum * 100;
+
+    const options = {
+      key: 'rzp_test_PBUluwX3e15zwd', // Your test API key
+      amount: amountInPaise,
+      currency: 'INR',
+      name: 'Your Company Name',
+      description: `Purchase of ${plan.title} Plan`,
+      image: 'https://example.com/your_logo.png',
+      
+      handler: function (response) {
+        alert(`Payment successful! Payment ID: ${response.razorpay_payment_id}`);
+        handleClose();
+      },
+      prefill: {
+        name: 'J. Smith',
+        email: 'jsmith@example.com',
+        contact: '9999999999',
+      },
+      notes: {
+        plan_title: plan.title,
+        address: 'Indore, Madhya Pradesh',
+      },
+      theme: {
+        color: '#3399cc',
+      },
+    };
+
+    // --- MODIFICATION: Ensure window.Razorpay exists before using it ---
+    try {
+        const paymentObject = new window.Razorpay(options);
+        paymentObject.open();
+    } catch (error) {
+        console.error(error);
+        alert("An error occurred while opening the payment gateway.");
+    }
+  };
+
+
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h6" component="div" sx={{ fontWeight: 'bold' }}>
-          Become a Premium Member to get instant access to all features
+    <Dialog open={open} onClose={handleClose} fullWidth maxWidth="md">
+      <DialogTitle sx={{ m: 0, p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h6">
+          Choose Your Plan
         </Typography>
-        <IconButton onClick={handleClose}>
+        <IconButton onClick={handleClose} aria-label="close">
           <CloseIcon />
         </IconButton>
       </DialogTitle>
+
       <DialogContent>
-        <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'medium' }}>
-          14-day full access
-        </Typography>
-        <RadioGroup value={selectedValue} onChange={handleChange}>
-          <Paper
-            variant="outlined"
-            sx={{
-              p: 1.5,
-              mb: 2,
-              borderRadius: '8px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              cursor: 'pointer',
-              borderColor: selectedValue === '190' ? 'primary.main' : 'grey.300',
-              borderWidth: 2,
-            }}
-            onClick={() => setSelectedValue('190')}
-          >
-            <FormControlLabel
-              value="190"
-              control={<Radio />}
-              label={
-                <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                  ₹190.00
+        <Grid container spacing={2} justifyContent="center">
+          {plans.map((plan, index) => (
+            <Grid item xs={12} sm={6} md={4} key={index}>
+              <Box sx={{ borderRadius: 3, boxShadow: 3, p: 3, textAlign: 'center', backgroundColor: '#fff', position: 'relative', overflow: 'hidden' }}>
+                <Box sx={{ position: 'absolute', top: 20, left: -40, background: `linear-gradient(135deg, ${plan.color[0]}, ${plan.color[1]})`, color: '#fff', px: 6, py: 1, transform: 'rotate(-45deg)', fontWeight: 'bold' }}>
+                  {plan.price}
+                </Box>
+                <Typography variant="h6" fontWeight="bold" gutterBottom sx={{ mt: 4 }}>
+                  {plan.title}
                 </Typography>
-              }
-            />
-            <Box>
-                <Chip label="MOST POPULAR" color="warning" size="small" sx={{ mr: 1, fontWeight: 'bold' }} />
-                <Typography variant="body2" component="span">14-day full access</Typography>
-            </Box>
-          </Paper>
-          <Paper
-            variant="outlined"
-            sx={{
-              p: 1.5,
-              mb: 2,
-              borderRadius: '8px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              cursor: 'pointer',
-              borderColor: selectedValue === '6490' ? 'primary.main' : 'grey.300',
-              borderWidth: 2,
-            }}
-            onClick={() => setSelectedValue('6490')}
-          >
-            <FormControlLabel
-              value="6490"
-              control={<Radio />}
-              label={
-                <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                  ₹6,490.00
+                <Typography variant="caption" color="text.secondary" gutterBottom>
+                  PER MONTH
                 </Typography>
-              }
-            />
-            <Typography variant="body2">3-month access</Typography>
-          </Paper>
-        </RadioGroup>
-        <Button variant="contained" fullWidth sx={{ py: 1.5, mb: 2, backgroundColor: '#2e7d32', '&:hover': {backgroundColor: '#1b5e20'} }}>
-          Continue
-        </Button>
-        <Paper elevation={0} sx={{ p: 2, backgroundColor: '#f5f5f5', textAlign: 'center', mb: 3 }}>
-            <Typography variant="subtitle2" sx={{fontWeight: 'bold'}}>OUR GUARANTEE</Typography>
-            <Typography variant="body2">Try for 14 days and if you're not 100% satisfied, get your money back.</Typography>
-        </Paper>
-
-        <Grid container spacing={3}>
-            {features.map((feature, index) => (
-                <Grid item xs={12} sm={6} key={index}>
-                    <Box sx={{display: 'flex', alignItems: 'start'}}>
-                        <Box sx={{mr: 1.5, mt: 0.5}}>{feature.icon}</Box>
-                        <Box>
-                            <Typography sx={{fontWeight: 'bold'}}>{feature.title}</Typography>
-                            <Typography variant="body2" color="text.secondary">{feature.description}</Typography>
-                            {feature.subDescription && <Typography variant="caption" color="text.secondary">{feature.subDescription}</Typography>}
-                        </Box>
-                    </Box>
-                </Grid>
-            ))}
+                <List dense>
+                  {featureLabels.map((label, i) => (
+                    <ListItem key={i} disableGutters>
+                      <ListItemIcon>
+                        {plan.features[i] ? <CheckCircleIcon color="success" fontSize="small" /> : <CancelIcon color="error" fontSize="small" />}
+                      </ListItemIcon>
+                      <ListItemText primary={<Typography variant="body2" color="text.secondary">{label}</Typography>} />
+                    </ListItem>
+                  ))}
+                </List>
+                <Button fullWidth variant="contained" onClick={() => displayRazorpay(plan)}
+                  sx={{ mt: 2, background: `linear-gradient(to right, ${plan.color[0]}, ${plan.color[1]})`, color: '#fff', borderRadius: '20px', textTransform: 'none', fontWeight: 'bold' }}
+                >
+                  ORDER NOW
+                </Button>
+              </Box>
+            </Grid>
+          ))}
         </Grid>
-
-        <Button variant="contained" fullWidth sx={{ py: 1.5, mt: 3, backgroundColor: '#2e7d32', '&:hover': {backgroundColor: '#1b5e20'} }}>
-          Continue
-        </Button>
       </DialogContent>
     </Dialog>
   );
 };
 
-export default PremiumPopup;
+export default PricingPopup;
