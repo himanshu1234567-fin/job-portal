@@ -21,7 +21,7 @@ const drawerWidth = 240;
 const navItems = [
   { label: 'Dashboard', path: '/dashboard', icon: <DashboardIcon /> },
   { label: 'Candidates', path: '/dashboard/candidate', icon: <PeopleIcon /> },
-  { label: 'Jobs', path: '/admin/jobs', icon: <WorkIcon /> },
+  { label: 'Jobs', path: '/dashboard/jobs', icon: <WorkIcon /> },
   { label: 'Settings', path: '/admin/settings', icon: <SettingsIcon /> },
 ];
 

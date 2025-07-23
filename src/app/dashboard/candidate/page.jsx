@@ -31,7 +31,7 @@ export default function CandidatesPage() {
       try {
         const token = localStorage.getItem('authToken');
         const response = await axios.get(
-          'http://localhost:3000/api/admin-dashboard',
+          'http://localhost:5000/api/admin-dashboard',
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setCandidates(response.data.dashboards || []);

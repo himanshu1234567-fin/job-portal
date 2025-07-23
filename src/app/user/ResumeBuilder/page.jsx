@@ -13,7 +13,6 @@ import {
   Grid,
   Typography,
   IconButton,
-  Divider,
   TextField,
   Paper,
   FormControl,
@@ -32,8 +31,6 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DownloadIcon from '@mui/icons-material/Download';
 import axios from 'axios';
-// import { jsPDF } from 'jspdf';
-// import html2canvas from 'html2canvas';
 
 const templates = [
   { id: 'modern', name: 'Modern', description: 'Clean, sleek, and modern layout suited for tech roles.', preview: '/preview-modern.png' },
@@ -47,7 +44,7 @@ const plans = [
   { id: 'plan4', name: '₹999 - Unlimited Resumes (1 Year)', price: 99900, limit: Infinity, validityDays: 365 },
 ];
 
-const steps = ['Upload Resume', 'Contact Information', 'Job Title', 'Educational Background', 'Work Experience', 'Skills', 'Choose Template'];
+const steps = ['Upload Resume', 'Contact Information', 'Job Title', 'Educational Background', 'Work Experience', 'Project Details', 'Skills', 'Choose Template'];
 
 export default function ResumeBuilderPage() {
   const router = useRouter();
@@ -74,6 +71,9 @@ export default function ResumeBuilderPage() {
   const [selectedLanguage, setSelectedLanguage] = useState('English (United States)');
   const [education, setEducation] = useState([]);
   const [workExperience, setWorkExperience] = useState([]);
+  const [internships, setInternships] = useState([]);
+  const [isFresher, setIsFresher] = useState(false);
+  const [projects, setProjects] = useState([]);
   const [mustHaveSkills, setMustHaveSkills] = useState([]);
   const [selectedSkills, setSelectedSkills] = useState([]);
   const [customSkill, setCustomSkill] = useState('');
@@ -103,6 +103,8 @@ export default function ResumeBuilderPage() {
           education: data.education || [],
           skills: data.skills || [],
           experience: data.experience || [],
+          internships: data.internships || [],
+          projects: data.projects || [],
           desirableJob: data.desirableJob || '',
         });
 
@@ -121,12 +123,35 @@ export default function ResumeBuilderPage() {
         setWorkExperience(
           Array.isArray(data.experience) && data.experience.length > 0
             ? data.experience.map((exp) => ({
-              company: exp.company || '',
-              role: exp.role || '',
-              duration: exp.duration || '',
-            }))
+                company: exp.company || '',
+                role: exp.role || '',
+                startDate: exp.startDate || '',
+                endDate: exp.endDate || '',
+              }))
             : []
         );
+        setInternships(
+          Array.isArray(data.internships) && data.internships.length > 0
+            ? data.internships.map((intern) => ({
+                company: intern.company || '',
+                role: intern.role || '',
+                startDate: intern.startDate || '',
+                endDate: intern.endDate || '',
+                description: intern.description || '',
+              }))
+            : []
+        );
+        setProjects(
+          Array.isArray(data.projects) && data.projects.length > 0
+            ? data.projects.map((proj) => ({
+                title: proj.title || '',
+                description: proj.description || '',
+                techStack: proj.techStack || '',
+                link: proj.link || '',
+              }))
+            : []
+        );
+        setIsFresher(data.experience?.length === 0);
         setMustHaveSkills(['JavaScript', 'React', 'Node.js', 'CSS', 'HTML', 'Python', 'Java', 'SQL', 'Git', 'AWS']);
         setSelectedSkills(data.skills || []);
         setLanguages(['English (United States)', 'English (UK)', 'Spanish', 'French', 'German', 'Hindi', 'Chinese']);
@@ -134,7 +159,9 @@ export default function ResumeBuilderPage() {
         console.error('Error fetching profile:', error);
         if (error.response) {
           setError(
-            `Failed to load profile data: ${error.response.status} ${error.response.statusText}${error.response.data?.message ? ` - ${error.response.data.message}` : ''}`
+            `Failed to load profile data: ${error.response.status} ${error.response.statusText}${
+              error.response.data?.message ? ` - ${error.response.data.message}` : ''
+            }`
           );
         } else if (error.request) {
           setError('Failed to load profile data: Unable to connect to the server. Please check if the server is running.');
@@ -164,13 +191,33 @@ export default function ResumeBuilderPage() {
     );
   };
 
-  const addWorkExp = () => setWorkExperience((prev) => [...prev, { company: '', role: '', duration: '' }]);
+  const addWorkExp = () =>
+    setWorkExperience((prev) => [...prev, { company: '', role: '', startDate: '', endDate: '' }]);
   const removeWorkExp = (index) => setWorkExperience((prev) => prev.filter((_, i) => i !== index));
   const handleWorkExpChange = (index, field, value) => {
     setWorkExperience((prev) =>
       prev.map((exp, i) => (i === index ? { ...exp, [field]: value } : exp))
     );
   };
+
+  const addInternship = () =>
+    setInternships((prev) => [...prev, { company: '', role: '', startDate: '', endDate: '', description: '' }]);
+  const removeInternship = (index) => setInternships((prev) => prev.filter((_, i) => i !== index));
+  const handleInternshipChange = (index, field, value) => {
+    setInternships((prev) =>
+      prev.map((intern, i) => (i === index ? { ...intern, [field]: value } : intern))
+    );
+  };
+
+  const handleProjectChange = (index, field, value) => {
+    setProjects((prev) =>
+      prev.map((proj, i) => (i === index ? { ...proj, [field]: value } : proj))
+    );
+  };
+
+  const addProject = () =>
+    setProjects((prev) => [...prev, { title: '', description: '', techStack: '', link: '' }]);
+  const removeProject = (index) => setProjects((prev) => prev.filter((_, i) => i !== index));
 
   const handleSkillToggle = (skill) => {
     setSelectedSkills((prev) =>
@@ -224,29 +271,35 @@ export default function ResumeBuilderPage() {
         return (
           <Paper
             sx={{
-              p: 3,
-              mb: 4,
+              p: 2,
+              mb: 3,
+              maxWidth: 500,
+              mx: 'auto',
               borderRadius: 2,
-              boxShadow: 3,
+              boxShadow: 2,
               transition: 'transform 0.2s',
               '&:hover': { transform: 'scale(1.01)' },
             }}
           >
-            <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', color: '#1976d2' }}>
+            <Typography
+              variant='h6'
+              gutterBottom
+              sx={{ fontWeight: 'bold', color: '#1976d2', fontSize: '1.1rem' }}
+            >
               Upload your resume
             </Typography>
-            <Typography variant="body1" gutterBottom sx={{ color: '#555', mb: 3 }}>
-              Regardless of what shape it’s in, we’ll take it to the next level and customize it for your application.
+            <Typography variant='body2' gutterBottom sx={{ color: '#555', mb: 2 }}>
+              We’ll customize it for your application regardless of its shape.
             </Typography>
             <Box
               sx={{
-                mt: 2,
-                p: 4,
+                mt: 1,
+                p: 3,
                 border: '2px dashed #1976d2',
                 borderRadius: 2,
                 textAlign: 'center',
                 backgroundColor: '#f5f5f5',
-                minHeight: '150px',
+                minHeight: '120px',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'center',
@@ -259,116 +312,144 @@ export default function ResumeBuilderPage() {
                 if (e.dataTransfer.files.length > 0) handleFileChange({ target: { files: e.dataTransfer.files } });
               }}
             >
-              <Typography variant="h6" sx={{ mb: 1, color: '#1976d2' }}>
+              <Typography variant='subtitle1' sx={{ mb: 1, color: '#1976d2', fontSize: '0.95rem' }}>
                 Drag and drop your resume here
               </Typography>
-              <Typography variant="body2" sx={{ mb: 2, color: '#666' }}>
+              <Typography variant='caption' sx={{ mb: 2, color: '#666' }}>
                 or (up to 20MB)
               </Typography>
               <Button
-                variant="contained"
-                component="label"
-                sx={{ mb: 2, backgroundColor: '#1976d2', '&:hover': { backgroundColor: '#1565c0' } }}
+                variant='contained'
+                component='label'
+                sx={{ mb: 2, fontSize: '0.8rem', py: 0.5, px: 2 }}
               >
                 Select file
-                <input type="file" hidden onChange={handleFileChange} />
+                <input type='file' hidden onChange={handleFileChange} />
               </Button>
               <Typography
-                variant="body2"
+                variant='caption'
                 sx={{ color: 'primary.main', cursor: 'pointer', textDecoration: 'underline' }}
                 onClick={() => setNoResume(true)}
               >
                 I don’t have a resume
               </Typography>
-              {resumeFile || noResume ? (
+              {(resumeFile || noResume) && (
                 <Button
-                  variant="contained"
+                  variant='contained'
                   onClick={handleNext}
-                  sx={{ mt: 3, backgroundColor: '#4caf50', '&:hover': { backgroundColor: '#388e3c' } }}
+                  sx={{
+                    mt: 2,
+                    backgroundColor: '#4caf50',
+                    fontSize: '0.8rem',
+                    '&:hover': { backgroundColor: '#388e3c' },
+                  }}
                   disabled={!resumeFile && !noResume}
                 >
                   Continue
                 </Button>
-              ) : null}
+              )}
             </Box>
           </Paper>
         );
       case 1:
         return (
-          <Paper sx={{ p: 3, mb: 4 }}>
-            <Typography variant="h5" gutterBottom>Your Contact Information</Typography>
+          <Paper
+            sx={{
+              p: 3,
+              mb: 4,
+              maxWidth: 800,
+              mx: 'auto',
+              borderRadius: 2,
+              boxShadow: 3,
+            }}
+          >
+            <Typography
+              variant='h6'
+              gutterBottom
+              sx={{ fontWeight: 'bold', color: 'primary.main', mb: 2 }}
+            >
+              Your Contact Information
+            </Typography>
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6}>
                 <TextField
-                  label="First Name"
+                  label='First Name'
                   fullWidth
+                  size='small'
                   value={contactInfo.firstName}
                   onChange={(e) => handleContactChange('firstName', e.target.value)}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField
-                  label="Last Name"
+                  label='Last Name'
                   fullWidth
+                  size='small'
                   value={contactInfo.lastName}
                   onChange={(e) => handleContactChange('lastName', e.target.value)}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField
-                  label="Location"
+                  label='Location'
                   fullWidth
+                  size='small'
                   value={contactInfo.location}
                   onChange={(e) => handleContactChange('location', e.target.value)}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField
-                  label="ZIP Code (optional)"
+                  label='ZIP Code (optional)'
                   fullWidth
+                  size='small'
                   value={contactInfo.zipCode}
                   onChange={(e) => handleContactChange('zipCode', e.target.value)}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField
-                  label="Country (optional)"
+                  label='Country (optional)'
                   fullWidth
+                  size='small'
                   value={contactInfo.country}
                   onChange={(e) => handleContactChange('country', e.target.value)}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField
-                  label="Phone"
+                  label='Phone'
                   fullWidth
+                  size='small'
                   value={contactInfo.phone}
                   onChange={(e) => handleContactChange('phone', e.target.value)}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField
-                  label="Email"
+                  label='Email'
                   fullWidth
+                  size='small'
                   value={contactInfo.email}
                   onChange={(e) => handleContactChange('email', e.target.value)}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField
-                  label="LinkedIn (optional)"
+                  label='LinkedIn (optional)'
                   fullWidth
+                  size='small'
                   value={contactInfo.linkedIn}
                   onChange={(e) => handleContactChange('linkedIn', e.target.value)}
                 />
               </Grid>
             </Grid>
-            <FormControl fullWidth sx={{ mt: 2 }}>
+            <FormControl fullWidth sx={{ mt: 3 }} size='small'>
               <InputLabel>Choose Language</InputLabel>
               <Select
                 value={selectedLanguage}
                 onChange={(e) => setSelectedLanguage(e.target.value)}
-                label="Choose Language"
+                label='Choose Language'
               >
                 {languages.map((lang) => (
                   <MenuItem key={lang} value={lang}>
@@ -382,117 +463,347 @@ export default function ResumeBuilderPage() {
         );
       case 2:
         return (
-          <Paper sx={{ p: 3, mb: 4 }}>
-            <Typography variant="h5" gutterBottom>What job are you applying for?</Typography>
+          <Paper
+            elevation={3}
+            sx={{
+              p: 3,
+              mb: 4,
+              borderRadius: 2,
+              maxWidth: 600,
+              mx: 'auto',
+              boxShadow: 2,
+              backgroundColor: '#fafafa',
+            }}
+          >
+            <Typography
+              variant='h6'
+              gutterBottom
+              sx={{ fontWeight: 'bold', color: '#1976d2' }}
+            >
+              What job are you applying for?
+            </Typography>
             <TextField
-              label="Job Title"
+              label='Job Title'
+              variant='outlined'
               fullWidth
               value={jobTitle}
               onChange={(e) => setJobTitle(e.target.value)}
-              placeholder="e.g., Frontend Developer"
+              placeholder='e.g., Frontend Developer'
+              sx={{ mt: 2 }}
             />
-            <Typography variant="body2" color="text.secondary" mt={1}>
-              Please provide a job title so that we can tailor your resume to the desired role.
+            <Typography variant='body2' sx={{ mt: 1, color: 'text.secondary' }}>
+              Please provide a job title so we can tailor your resume to the desired role.
             </Typography>
           </Paper>
         );
       case 3:
         return (
-          <Paper sx={{ p: 3, mb: 4 }}>
-            <Typography variant="h5" gutterBottom>Please add your educational background</Typography>
+          <Paper
+            elevation={3}
+            sx={{
+              p: 3,
+              mb: 4,
+              borderRadius: 2,
+              backgroundColor: '#fafafa',
+            }}
+          >
+            <Typography variant='h6' gutterBottom sx={{ fontWeight: 'bold', color: '#1976d2' }}>
+              Please add your educational background
+            </Typography>
             {education.map((edu, index) => (
-              <Box key={index} sx={{ mb: 2, p: 2, border: '1px dashed #ccc', borderRadius: 2 }}>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={4}>
-                    <TextField
-                      label="Degree"
-                      fullWidth
-                      value={edu.degree}
-                      onChange={(e) => handleEducationChange(index, 'degree', e.target.value)}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={4}>
-                    <TextField
-                      label="Institution"
-                      fullWidth
-                      value={edu.institution}
-                      onChange={(e) => handleEducationChange(index, 'institution', e.target.value)}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={4}>
-                    <TextField
-                      label="Year"
-                      fullWidth
-                      value={edu.year}
-                      onChange={(e) => handleEducationChange(index, 'year', e.target.value)}
-                    />
-                  </Grid>
-                </Grid>
-                <IconButton onClick={() => removeEducation(index)}>
-                  <DeleteIcon />
+              <Box
+                key={index}
+                sx={{
+                  mb: 3,
+                  position: 'relative',
+                  borderRadius: 2,
+                }}
+              >
+                <IconButton
+                  onClick={() => removeEducation(index)}
+                  sx={{
+                    position: 'absolute',
+                    top: -12,
+                    right: -12,
+                    zIndex: 1,
+                    backgroundColor: '#fff',
+                    boxShadow: 1,
+                    '&:hover': {
+                      backgroundColor: '#fce4e4',
+                    },
+                  }}
+                  aria-label='delete education'
+                >
+                  <DeleteIcon color='error' />
                 </IconButton>
+                <Box
+                  sx={{
+                    p: 2,
+                    border: '1px dashed #ccc',
+                    borderRadius: 2,
+                    backgroundColor: '#fff',
+                  }}
+                >
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={4}>
+                      <TextField
+                        label='Degree'
+                        fullWidth
+                        value={edu.degree}
+                        onChange={(e) => handleEducationChange(index, 'degree', e.target.value)}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <TextField
+                        label='Institution'
+                        fullWidth
+                        value={edu.institution}
+                        onChange={(e) => handleEducationChange(index, 'institution', e.target.value)}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <TextField
+                        label='Year'
+                        fullWidth
+                        value={edu.year}
+                        onChange={(e) => handleEducationChange(index, 'year', e.target.value)}
+                      />
+                    </Grid>
+                  </Grid>
+                </Box>
               </Box>
             ))}
-            <Button variant="outlined" startIcon={<AddIcon />} onClick={addEducation}>
-              Add Item
+            <Button
+              variant='outlined'
+              startIcon={<AddIcon />}
+              onClick={addEducation}
+              sx={{ mt: 2 }}
+            >
+              Add Education
             </Button>
           </Paper>
         );
       case 4:
         return (
-          <Paper sx={{ p: 3, mb: 4 }}>
-            <Typography variant="h5" gutterBottom>Please add your work experience</Typography>
-            {workExperience.map((exp, index) => (
-              <Box key={index} sx={{ mb: 2, p: 2, border: '1px dashed #ccc', borderRadius: 2 }}>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={4}>
-                    <TextField
-                      label="Company"
-                      fullWidth
-                      value={exp.company}
-                      onChange={(e) => handleWorkExpChange(index, 'company', e.target.value)}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={4}>
-                    <TextField
-                      label="Role"
-                      fullWidth
-                      value={exp.role}
-                      onChange={(e) => handleWorkExpChange(index, 'role', e.target.value)}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={4}>
-                    <TextField
-                      label="Duration"
-                      fullWidth
-                      value={exp.duration}
-                      onChange={(e) => handleWorkExpChange(index, 'duration', e.target.value)}
-                    />
-                  </Grid>
-                </Grid>
-                <IconButton onClick={() => removeWorkExp(index)}>
-                  <DeleteIcon />
+          <Paper sx={{ p: 3, mb: 4, borderRadius: 2 }}>
+            <Typography variant='h5' gutterBottom sx={{ fontWeight: 'bold', color: '#1976d2' }}>
+              {isFresher ? 'Please add your internship details' : 'Please add your work experience'}
+            </Typography>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={isFresher}
+                  onChange={(e) => setIsFresher(e.target.checked)}
+                  color='primary'
+                />
+              }
+              label='I am a fresher (no full-time work experience)'
+              sx={{ mb: 3 }}
+            />
+            {(isFresher ? internships : workExperience).map((item, index) => (
+              <Box key={index} sx={{ position: 'relative', mb: 5 }}>
+                <IconButton
+                  onClick={() => (isFresher ? removeInternship(index) : removeWorkExp(index))}
+                  sx={{
+                    position: 'absolute',
+                    top: -12,
+                    right: -12,
+                    zIndex: 2,
+                    backgroundColor: '#fff',
+                    border: '1px solid #ccc',
+                    boxShadow: 1,
+                  }}
+                >
+                  <DeleteIcon color='error' />
                 </IconButton>
+                <Box
+                  sx={{
+                    p: 2,
+                    border: '1px dashed #ccc',
+                    borderRadius: 2,
+                    backgroundColor: '#fafafa',
+                  }}
+                >
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={6} md={4}>
+                      <TextField
+                        label='Company'
+                        fullWidth
+                        value={item.company}
+                        onChange={(e) =>
+                          isFresher
+                            ? handleInternshipChange(index, 'company', e.target.value)
+                            : handleWorkExpChange(index, 'company', e.target.value)
+                        }
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6} md={4}>
+                      <TextField
+                        label='Role'
+                        fullWidth
+                        value={item.role}
+                        onChange={(e) =>
+                          isFresher
+                            ? handleInternshipChange(index, 'role', e.target.value)
+                            : handleWorkExpChange(index, 'role', e.target.value)
+                        }
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6} md={4}>
+                      <TextField
+                        label='Start Date'
+                        type='date'
+                        fullWidth
+                        InputLabelProps={{ shrink: true }}
+                        value={item.startDate}
+                        onChange={(e) =>
+                          isFresher
+                            ? handleInternshipChange(index, 'startDate', e.target.value)
+                            : handleWorkExpChange(index, 'startDate', e.target.value)
+                        }
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6} md={4}>
+                      <TextField
+                        label='End Date'
+                        type='date'
+                        fullWidth
+                        InputLabelProps={{ shrink: true }}
+                        value={item.endDate}
+                        onChange={(e) =>
+                          isFresher
+                            ? handleInternshipChange(index, 'endDate', e.target.value)
+                            : handleWorkExpChange(index, 'endDate', e.target.value)
+                        }
+                      />
+                    </Grid>
+                    {isFresher && (
+                      <Grid item xs={12}>
+                        <TextField
+                          label='Description'
+                          fullWidth
+                          multiline
+                          rows={3}
+                          placeholder='Describe your responsibilities and achievements'
+                          value={item.description}
+                          onChange={(e) =>
+                            handleInternshipChange(index, 'description', e.target.value)
+                          }
+                        />
+                      </Grid>
+                    )}
+                  </Grid>
+                </Box>
               </Box>
             ))}
-            <Button variant="outlined" startIcon={<AddIcon />} onClick={addWorkExp}>
-              Add Item
+            <Button
+              variant='outlined'
+              startIcon={<AddIcon />}
+              onClick={isFresher ? addInternship : addWorkExp}
+              sx={{ mt: 2 }}
+            >
+              {isFresher ? 'Add Internship' : 'Add Work Experience'}
             </Button>
           </Paper>
         );
       case 5:
         return (
-          <Paper sx={{ p: 3, mb: 4 }}>
-            <Typography variant="h5" gutterBottom>Add Skills</Typography>
+          <Paper sx={{ p: 3, mb: 4, borderRadius: 2 }}>
+            <Typography
+              variant='h5'
+              gutterBottom
+              sx={{ fontWeight: 'bold', color: '#1976d2' }}
+            >
+              Project Details
+            </Typography>
+            {projects.map((project, index) => (
+              <Box
+                key={index}
+                sx={{
+                  mb: 3,
+                  p: 2,
+                  border: '1px dashed #ccc',
+                  borderRadius: 2,
+                  backgroundColor: '#fafafa',
+                }}
+              >
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      label='Project Title'
+                      fullWidth
+                      value={project.title}
+                      onChange={(e) => handleProjectChange(index, 'title', e.target.value)}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      label='Tech Stack'
+                      fullWidth
+                      value={project.techStack}
+                      onChange={(e) => handleProjectChange(index, 'techStack', e.target.value)}
+                    />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <TextField
+                      label='Project Description'
+                      fullWidth
+                      multiline
+                      rows={3}
+                      value={project.description}
+                      onChange={(e) => handleProjectChange(index, 'description', e.target.value)}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      label='Project Link'
+                      fullWidth
+                      value={project.link}
+                      onChange={(e) => handleProjectChange(index, 'link', e.target.value)}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={6} sx={{ textAlign: 'right' }}>
+                    <IconButton
+                      onClick={() => removeProject(index)}
+                      sx={{ mt: { xs: 2, sm: 0 } }}
+                      color='error'
+                      aria-label='delete project'
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Grid>
+                </Grid>
+              </Box>
+            ))}
+            <Button
+              variant='outlined'
+              startIcon={<AddIcon />}
+              onClick={addProject}
+              sx={{ mt: 2 }}
+            >
+              Add Project
+            </Button>
+          </Paper>
+        );
+      case 6:
+        return (
+          <Paper sx={{ p: 3, mb: 4, borderRadius: 2 }}>
+            <Typography
+              variant='h5'
+              gutterBottom
+              sx={{ fontWeight: 'bold', color: '#1976d2' }}
+            >
+              Add Skills
+            </Typography>
             <Grid container spacing={2}>
               {mustHaveSkills.map((skill) => (
-                <Grid item xs={6} sm={4} key={skill}>
+                <Grid item xs={12} sm={6} md={4} key={skill}>
                   <FormControlLabel
                     control={
                       <Checkbox
                         checked={selectedSkills.includes(skill)}
                         onChange={() => handleSkillToggle(skill)}
-                        color="primary"
+                        color='primary'
                       />
                     }
                     label={skill}
@@ -500,29 +811,40 @@ export default function ResumeBuilderPage() {
                 </Grid>
               ))}
               <Grid item xs={12}>
-                <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    gap: 2,
+                    mt: 1,
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    alignItems: { sm: 'center' },
+                  }}
+                >
                   <TextField
-                    label="Add Custom Skill"
+                    label='Add Custom Skill'
                     value={customSkill}
                     onChange={(e) => setCustomSkill(e.target.value)}
                     fullWidth
                   />
                   <Button
-                    variant="contained"
+                    variant='contained'
                     onClick={addCustomSkill}
                     disabled={!customSkill.trim()}
+                    sx={{ whiteSpace: 'nowrap', mt: { xs: 1, sm: 0 } }}
                   >
-                    Add
+                    Add Skill
                   </Button>
                 </Box>
               </Grid>
             </Grid>
           </Paper>
         );
-      case 6:
+      case 7:
         return (
           <Box>
-            <Typography variant="h5" gutterBottom>Choose Resume Template</Typography>
+            <Typography variant='h5' gutterBottom>
+              Choose Resume Template
+            </Typography>
             <Grid container spacing={3}>
               {templates.map((template) => (
                 <Grid item xs={12} md={6} key={template.id}>
@@ -537,13 +859,13 @@ export default function ResumeBuilderPage() {
                     }}
                   >
                     <CardContent>
-                      <Typography variant="h6" align="center">
+                      <Typography variant='h6' align='center'>
                         {template.name}
                       </Typography>
                       <Typography
-                        variant="body2"
-                        align="center"
-                        color="text.secondary"
+                        variant='body2'
+                        align='center'
+                        color='text.secondary'
                       >
                         {template.description}
                       </Typography>
@@ -552,17 +874,17 @@ export default function ResumeBuilderPage() {
                 </Grid>
               ))}
             </Grid>
-            <Box mt={4} display="flex" justifyContent="center" gap={2}>
+            <Box mt={4} display='flex' justifyContent='center' gap={2}>
               <Button
-                variant="contained"
+                variant='contained'
                 onClick={handlePreview}
                 disabled={!selectedTemplate}
               >
                 Preview Resume
               </Button>
               <Button
-                variant="contained"
-                color="success"
+                variant='contained'
+                color='success'
                 startIcon={<DownloadIcon />}
                 onClick={handleDownload}
                 disabled={!selectedTemplate}
@@ -582,7 +904,7 @@ export default function ResumeBuilderPage() {
 
     return (
       <Box
-        id="resume"
+        id='resume'
         sx={{
           p: isModern ? 4 : 3,
           maxWidth: '800px',
@@ -603,7 +925,7 @@ export default function ResumeBuilderPage() {
           }}
         >
           <Typography
-            variant="h3"
+            variant='h3'
             sx={{
               fontWeight: isModern ? 'bold' : 'normal',
               fontSize: isModern ? '2.5rem' : '2rem',
@@ -613,10 +935,10 @@ export default function ResumeBuilderPage() {
             {contactInfo.firstName} {contactInfo.lastName}
           </Typography>
           <Typography
-            variant="body1"
+            variant='body1'
             sx={{
               fontSize: isModern ? '1rem' : '0.9rem',
-              color: isModern ? '#555' : '#000',
+              color: isModern ? '0.555' : '#000',
               mt: isModern ? 1 : 0,
             }}
           >
@@ -631,7 +953,7 @@ export default function ResumeBuilderPage() {
         {jobTitle && (
           <Box sx={{ mb: 3 }}>
             <Typography
-              variant="h5"
+              variant='h5'
               sx={{
                 fontWeight: isModern ? 'bold' : 'normal',
                 fontSize: isModern ? '1.25rem' : '1.1rem',
@@ -651,7 +973,7 @@ export default function ResumeBuilderPage() {
         {selectedSkills.length > 0 && (
           <Box sx={{ mb: 3 }}>
             <Typography
-              variant="h5"
+              variant='h5'
               sx={{
                 fontWeight: isModern ? 'bold' : 'normal',
                 fontSize: isModern ? '1.25rem' : '1.1rem',
@@ -688,10 +1010,10 @@ export default function ResumeBuilderPage() {
           </Box>
         )}
 
-        {workExperience.length > 0 && (
+        {(workExperience.length > 0 || internships.length > 0) && (
           <Box sx={{ mb: 3 }}>
             <Typography
-              variant="h5"
+              variant='h5'
               sx={{
                 fontWeight: isModern ? 'bold' : 'normal',
                 fontSize: isModern ? '1.25rem' : '1.1rem',
@@ -700,16 +1022,67 @@ export default function ResumeBuilderPage() {
                 pb: 0.5,
               }}
             >
-              Work Experience
+              {isFresher ? 'Internships' : 'Work Experience'}
             </Typography>
-            {workExperience.map((exp, index) => (
+            {isFresher
+              ? internships.map((intern, index) => (
+                  <Box key={index} sx={{ mt: 2 }}>
+                    <Typography sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
+                      {intern.role} - {intern.company}
+                    </Typography>
+                    <Typography sx={{ fontSize: '0.9rem', color: '#555' }}>
+                      {intern.startDate} - {intern.endDate}
+                    </Typography>
+                    <Typography sx={{ fontSize: '0.9rem', mt: 1 }}>
+                      {intern.description}
+                    </Typography>
+                  </Box>
+                ))
+              : workExperience.map((exp, index) => (
+                  <Box key={index} sx={{ mt: 2 }}>
+                    <Typography sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
+                      {exp.role} - {exp.company}
+                    </Typography>
+                    <Typography sx={{ fontSize: '0.9rem', color: '#555' }}>
+                      {exp.startDate} - {exp.endDate}
+                    </Typography>
+                  </Box>
+                ))}
+          </Box>
+        )}
+
+        {projects.length > 0 && (
+          <Box sx={{ mb: 3 }}>
+            <Typography
+              variant='h5'
+              sx={{
+                fontWeight: isModern ? 'bold' : 'normal',
+                fontSize: isModern ? '1.25rem' : '1.1rem',
+                color: isModern ? '#1976d2' : '#000',
+                borderBottom: isModern ? '2px solid #e0e0e0' : '1px solid #000',
+                pb: 0.5,
+              }}
+            >
+              Projects
+            </Typography>
+            {projects.map((project, index) => (
               <Box key={index} sx={{ mt: 2 }}>
                 <Typography sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
-                  {exp.role} - {exp.company}
+                  {project.title}
                 </Typography>
                 <Typography sx={{ fontSize: '0.9rem', color: '#555' }}>
-                  {exp.duration}
+                  Tech Stack: {project.techStack}
                 </Typography>
+                <Typography sx={{ fontSize: '0.9rem', mt: 1 }}>
+                  {project.description}
+                </Typography>
+                {project.link && (
+                  <Typography sx={{ fontSize: '0.9rem', color: '#1976d2', mt: 0.5 }}>
+                    <a href={project.link} target='_blank' rel='noopener noreferrer'>
+                      {project.link}
+                    </a>
+                  </Typography>
+                )}
               </Box>
             ))}
           </Box>
@@ -718,7 +1091,7 @@ export default function ResumeBuilderPage() {
         {education.length > 0 && (
           <Box sx={{ mb: 3 }}>
             <Typography
-              variant="h5"
+              variant='h5'
               sx={{
                 fontWeight: isModern ? 'bold' : 'normal',
                 fontSize: isModern ? '1.25rem' : '1.1rem',
@@ -746,28 +1119,28 @@ export default function ResumeBuilderPage() {
   };
 
   if (loading) return <Typography>Loading profile data...</Typography>;
-  if (error) return (
-    <Box>
-      <Typography color="error">{error}</Typography>
-      <Button
-        variant="contained"
-        onClick={() => router.push('/login')}
-        sx={{ mt: 2 }}
-      >
-        Go to Login
-      </Button>
-    </Box>
-  );
+  if (error)
+    return (
+      <Box>
+        <Typography color='error'>{error}</Typography>
+        <Button
+          variant='contained'
+          onClick={() => router.push('/login')}
+          sx={{ mt: 2 }}
+        >
+          Go to Login
+        </Button>
+      </Box>
+    );
 
   return (
-    <Box p={4} bgcolor="#f5f5f5" minHeight="100vh">
+    <Box p={4} bgcolor='#f5f5f5' minHeight='100vh'>
       <IconButton onClick={() => router.push('/user/Userdashboard')}>
         <ArrowBackIcon />
       </IconButton>
-      <Typography variant="h6" ml={1}>
+      <Typography variant='h6' ml={1}>
         Back to Dashboard
       </Typography>
-
       <Stepper activeStep={activeStep} sx={{ mt: 4, mb: 4 }}>
         {steps.map((label) => (
           <Step key={label}>
@@ -775,30 +1148,29 @@ export default function ResumeBuilderPage() {
           </Step>
         ))}
       </Stepper>
-
       {getStepContent(activeStep)}
-
       <Box sx={{ mt: 4, display: 'flex', justifyContent: 'space-between' }}>
         <Button disabled={activeStep === 0} onClick={handleBack}>
           Back
         </Button>
         {activeStep < steps.length - 1 && (
           <Button
-            variant="contained"
+            variant='contained'
             onClick={handleNext}
             disabled={
               (activeStep === 0 && !resumeFile && !noResume) ||
               (activeStep === 3 && education.length === 0) ||
-              // (activeStep === 4 && workExperience.length === 0) ||
-              (activeStep === 5 && selectedSkills.length === 0)
+              (activeStep === 4 && !isFresher && workExperience.length === 0) ||
+              (activeStep === 4 && isFresher && internships.length === 0) ||
+              (activeStep === 5 && projects.length === 0) ||
+              (activeStep === 6 && selectedSkills.length === 0)
             }
           >
             Continue
           </Button>
         )}
       </Box>
-
-      <Dialog open={showPreview} onClose={() => setShowPreview(false)} maxWidth="md" fullWidth>
+      <Dialog open={showPreview} onClose={() => setShowPreview(false)} maxWidth='md' fullWidth>
         <DialogTitle>
           Resume Preview - {templates.find((t) => t.id === selectedTemplate)?.name || 'Template'}
         </DialogTitle>
@@ -806,8 +1178,7 @@ export default function ResumeBuilderPage() {
           <ModernResume />
         </DialogContent>
       </Dialog>
-
-      <Dialog open={showPlans} onClose={() => setShowPlans(false)} maxWidth="sm" fullWidth>
+      <Dialog open={showPlans} onClose={() => setShowPlans(false)} maxWidth='sm' fullWidth>
         <DialogTitle>Select a Resume Plan</DialogTitle>
         <DialogContent>
           <Grid container spacing={2}>
@@ -827,7 +1198,7 @@ export default function ResumeBuilderPage() {
             ))}
           </Grid>
           <Button
-            variant="contained"
+            variant='contained'
             onClick={handlePlanPayment}
             disabled={!selectedPlan}
             sx={{ mt: 2 }}

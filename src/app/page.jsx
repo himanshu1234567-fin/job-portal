@@ -2,9 +2,9 @@
 
 import React, { useEffect, useState } from 'react';
 import {
-  Box, Container, CircularProgress, Paper, Divider, Grid, Checkbox, Chip, Typography, Button
+  Box, Container, CircularProgress, Paper, Divider, Grid, Checkbox, Chip, Typography, Button, Card, CardMedia, CardContent, CardActions, Rating, Link
 } from '@mui/material';
-import CompleteProfilePopup from '../components/PopupCard'; // Assuming this is your popup component
+import CompleteProfilePopup from '../components/PopupCard';
 import LandingAuthPopup from '../components/LandingAuthPopup';
 import Navbar from '../components/Navbar';
 
@@ -18,54 +18,57 @@ export default function ResumeBuilder() {
   const [showLandingAuthPopup, setShowLandingAuthPopup] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(false);
 
-  /**
-   * Checks if the user's profile is complete based on the backend schema.
-   * @param {object} profile - The candidate profile object from the API.
-   * @returns {boolean} - True if all required fields are filled, false otherwise.
-   */
   const isProfileComplete = (profile) => {
-    // 1. If the profile object itself is missing, it's incomplete.
     if (!profile) return false;
-
-    // 2. Define required fields from the schema.
     const topLevelRequiredFields = ['fullName', 'email', 'dob', 'phone', 'desirableJob'];
     const educationRequiredFields = [
       'college', 'collegeDegree', 'passingYear', 'cgpa',
       'board10', 'percentage10', 'board12', 'percentage12'
     ];
-
-    // 3. Check top-level string/date fields.
     for (const field of topLevelRequiredFields) {
-      if (!profile[field]) return false; // Checks for null, undefined, or empty string
+      if (!profile[field]) return false;
     }
-
-    // 4. Check 'experience' field specifically (0 is a valid value).
-    if (profile.experience === null || profile.experience === undefined) {
-        return false;
-    }
-
-    // 5. Check that required arrays exist and are not empty.
-    if (!Array.isArray(profile.skills) || profile.skills.length === 0) {
-      return false;
-    }
-    if (!Array.isArray(profile.education) || profile.education.length === 0) {
-      return false;
-    }
-
-    // 6. Check the nested fields in the first education record.
+    if (profile.experience === null || profile.experience === undefined) return false;
+    if (!Array.isArray(profile.skills) || profile.skills.length === 0) return false;
+    if (!Array.isArray(profile.education) || profile.education.length === 0) return false;
     const educationRecord = profile.education[0];
     for (const field of educationRequiredFields) {
-        // A value of 0 is valid for number fields, so check for null/undefined.
-        // An empty string is falsy, so !educationRecord[field] works for strings.
       if (educationRecord[field] === null || educationRecord[field] === undefined || educationRecord[field] === '') {
         return false;
       }
     }
-
-    // ✅ If all checks pass, the profile is complete.
     return true;
   };
 
+  const courses = [
+    {
+      title: 'The Complete Full-Stack Web Development Bootcamp',
+      instructor: 'Dr. Angela Yu',
+      rating: 4.8,
+      reviews: '2,150',
+      level: 'Beginner',
+      price: '₹499',
+      image: 'https://img-c.udemycdn.com/course/480x270/1565838_e54e_18.jpg',
+    },
+    {
+      title: 'The Complete Python Pro Bootcamp for 2025',
+      instructor: 'Jose Portilla',
+      rating: 4.7,
+      reviews: '1,830',
+      level: 'All Levels',
+      price: '₹529',
+      image: 'https://img-c.udemycdn.com/course/480x270/567828_67d0.jpg',
+    },
+    {
+      title: 'Advanced React and Redux: 2025 Edition',
+      instructor: 'Stephen Grider',
+      rating: 4.6,
+      reviews: '985',
+      level: 'Intermediate',
+      price: '₹499',
+      image: 'https://img-c.udemycdn.com/course/480x270/781532_8b4d_6.jpg',
+    },
+  ];
 
   useEffect(() => {
     const storedUser = localStorage.getItem('currentUser');
@@ -83,37 +86,27 @@ export default function ResumeBuilder() {
     } else {
       setShowLandingAuthPopup(true);
     }
-
     setAuthLoading(false);
   }, []);
 
   useEffect(() => {
     const fetchCandidateProfile = async () => {
       const token = localStorage.getItem('authToken');
-      if (!token || !currentUser) return; // Ensure currentUser is available
-
+      if (!token || !currentUser) return;
       setLoadingProfile(true);
       try {
         const response = await fetch('http://localhost:5000/api/candidates/me', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         });
-
         const data = await response.json();
         const isComplete = isProfileComplete(data);
-        
-        // Show the popup if the profile is NOT complete
         setShowPopup(!isComplete);
-        
       } catch (err) {
         console.error('Error fetching candidate profile:', err);
       } finally {
         setLoadingProfile(false);
       }
     };
-
     if (currentUser) {
       fetchCandidateProfile();
     }
@@ -123,31 +116,23 @@ export default function ResumeBuilder() {
     const fetchTasks = async () => {
       const token = localStorage.getItem('authToken');
       if (!token || !currentUser) return;
-
       setLoadingTasks(true);
       try {
         const response = await fetch('http://localhost:5000/api/questions', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         });
-
         const data = await response.json();
         let fetchedTasks = [];
-
         if (Array.isArray(data)) fetchedTasks = data;
         else if (Array.isArray(data.data)) fetchedTasks = data.data;
         else if (data.questions) fetchedTasks = data.questions;
-
         const transformedTasks = fetchedTasks.map(task => ({
           title: task.title || task.question || 'Untitled Task',
           question: task.question || task.title || 'No question text provided',
           duration: task.duration || 60,
           options: task.options || [],
-          _id: task._id // Keep track of ID for links
+          _id: task._id
         }));
-
         setTasks(transformedTasks);
       } catch (err) {
         console.error('Failed to load tasks:', err);
@@ -155,7 +140,6 @@ export default function ResumeBuilder() {
         setLoadingTasks(false);
       }
     };
-
     if (currentUser) {
       fetchTasks();
       const intervalId = setInterval(fetchTasks, 30000);
@@ -170,7 +154,7 @@ export default function ResumeBuilder() {
     localStorage.removeItem('authToken');
     setCurrentUser(null);
     setShowLandingAuthPopup(true);
-    setShowPopup(false); // Hide the popup immediately on logout
+    setShowPopup(false);
   };
 
   const handleClosePopup = () => {
@@ -179,10 +163,7 @@ export default function ResumeBuilder() {
 
   if (authLoading || loadingProfile) {
     return (
-      <Box sx={{
-        display: 'flex', justifyContent: 'center',
-        alignItems: 'center', height: '100vh'
-      }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
         <CircularProgress size={60} />
       </Box>
     );
@@ -190,7 +171,8 @@ export default function ResumeBuilder() {
 
   return (
     <Box sx={{ flexGrow: 1 }}>
-      <Navbar 
+      <Navbar
+        mobileOpen={mobileOpen}
         currentUser={currentUser}
         handleLogout={handleLogout}
         handleDrawerToggle={handleDrawerToggle}
@@ -198,25 +180,14 @@ export default function ResumeBuilder() {
       />
 
       {!currentUser ? (
-        <Box sx={{
-          background: 'linear-gradient(to bottom, #ffffff, #f5f9ff)',
-          minHeight: 'calc(100vh - 64px)',
-          display: 'flex',
-          alignItems: 'center',
-          py: 8
-        }}>
+        <Box sx={{ background: 'linear-gradient(to bottom, #ffffff, #f5f9ff)', minHeight: 'calc(100vh - 64px)', display: 'flex', alignItems: 'center', py: 8 }}>
           <Container maxWidth="lg">
             <Grid container spacing={6} alignItems="center">
               <Grid item xs={12} md={6}>
-                <Typography variant="h2" component="h1" sx={{ 
-                  fontWeight: 'bold', 
-                  mb: 3,
-                  fontSize: { xs: '2.5rem', md: '3.5rem' }
-                }}>
+                <Typography variant="h2" component="h1" sx={{ fontWeight: 'bold', mb: 3, fontSize: { xs: '2.5rem', md: '3.5rem' } }}>
                   Land a better job.<br />
                   <Box component="span" sx={{ color: 'primary.main' }}>faster!</Box>
                 </Typography>
-                
                 <Box sx={{ mb: 4 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                     <Box sx={{ width: 8, height: 8, bgcolor: 'primary.main', borderRadius: '50%', mr: 2 }} />
@@ -231,43 +202,19 @@ export default function ResumeBuilder() {
                     <Typography variant="body1">Confidence</Typography>
                   </Box>
                 </Box>
-                
-                <Button 
-                  onClick={() => setShowLandingAuthPopup(true)} 
-                  variant="contained" 
-                  size="large"
-                  sx={{ 
-                    px: 6,
-                    py: 1.5,
-                    fontSize: '1.1rem',
-                    mb: 3
-                  }}
-                >
+                <Button onClick={() => setShowLandingAuthPopup(true)} variant="contained" size="large" sx={{ px: 6, py: 1.5, fontSize: '1.1rem', mb: 3 }}>
                   Sign up for free
                 </Button>
-                
                 <Typography variant="body2" color="textSecondary">
                   Free Resume Review
                 </Typography>
               </Grid>
-              
               <Grid item xs={12} md={6}>
-                <Box sx={{ 
-                  borderRadius: 4,
-                  height: '400px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  overflow: 'hidden'
-                }}>
-                  <img 
-                    src="https://images.pexels.com/photos/6837641/pexels-photo-6837641.jpeg?_gl=1*1ba1y4d*_ga*MjEyMjIxMDExNC4xNzUzMDk3MTc3*_ga_8JE65Q40S6*czE3NTMwOTcxNzYkbzEkZzEkdDE3NTMwOTcxODIkajU0JGwwJGgw" 
+                <Box sx={{ borderRadius: 4, height: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                  <img
+                    src="https://images.pexels.com/photos/6837641/pexels-photo-6837641.jpeg?_gl=1*1ba1y4d*_ga*MjEyMjIxMDExNC4xNzUzMDk3MTc3*_ga_8JE65Q40S6*czE3NTMwOTcxNzYkbzEkZzEkdDE3NTMwOTcxODIkajU0JGwwJGgw"
                     alt="Person finding jobs"
-                    style={{ 
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover'
-                    }}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   />
                 </Box>
               </Grid>
@@ -288,8 +235,8 @@ export default function ResumeBuilder() {
                   Welcome, {currentUser.fullName}!<br />
                   Benefit from expert support and feedback during every step of your job search.
                 </Typography>
-                <Button 
-                  variant="contained" 
+                <Button
+                  variant="contained"
                   size="large"
                   sx={{ mt: 2 }}
                   href='/user/jobsearch'
@@ -299,18 +246,10 @@ export default function ResumeBuilder() {
               </Paper>
 
               {/* Tasks Section */}
-              <Paper sx={{
-                p: 2,
-                bgcolor: '#f5faff',
-                borderRadius: 2,
-                display: 'flex',
-                flexDirection: 'column',
-                mb: 3
-              }}>
+              <Paper sx={{ p: 2, bgcolor: '#f5faff', borderRadius: 2, display: 'flex', flexDirection: 'column', mb: 3 }}>
                 <Typography variant="h6" fontWeight="bold" sx={{ color: '#003366', mb: 2 }}>
                   Tasks
                 </Typography>
-
                 {loadingTasks ? (
                   <Box sx={{ textAlign: 'center', py: 4 }}>
                     <CircularProgress />
@@ -347,7 +286,6 @@ export default function ResumeBuilder() {
                 <Typography variant="body2" color="text.secondary" paragraph>
                   Important links related to your searches and bookmarks.
                 </Typography>
-                
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                   <Checkbox />
                   <Typography>New job search</Typography>
@@ -363,35 +301,61 @@ export default function ResumeBuilder() {
               </Paper>
             </Grid>
 
-            {/* Coaching Section (Sidebar) */}
+            {/* Sidebar Column */}
             <Grid item xs={12} md={4}>
-              <Paper sx={{ p: 3, height: '100%', borderRadius: 2, boxShadow: 1 }}>
-                <Typography variant="h6" component="h2" gutterBottom sx={{ fontWeight: 'bold' }}>
-                  Coaching
-                </Typography>
-                <Typography variant="body2" color="text.secondary" paragraph>
-                  Our coaches will provide you with step-by-step support to achieve your goal. You don't have to do it alone.
-                </Typography>
-
-                <Box sx={{ mb: 3, p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
-                  <Typography variant="subtitle1" fontWeight="bold">MasterClasses</Typography>
-                  <Chip label="Free" size="small" sx={{ mt: 1 }} />
-                </Box>
-
-                <Box sx={{ p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
-                  <Typography variant="subtitle1" fontWeight="bold">MasterClass</Typography>
-                  <Typography variant="subtitle1" fontWeight="bold" sx={{ mt: 1 }}>Self-assessment</Typography>
-                  <Typography variant="body2" sx={{ mt: 1 }}>
-                    Sharpen your focus on where you want to go
-                  </Typography>
-                </Box>
-              </Paper>
+              <Typography variant="h5" component="h2" gutterBottom sx={{ fontWeight: 'bold' }}>
+                Recommended Courses
+              </Typography>
+              {/* --- MODIFICATION: Reduced spacing between cards --- */}
+              <Grid container spacing={3}>
+                {courses.map((course, index) => (
+                  <Grid item key={index} xs={12} sm={6} md={12}>
+                    <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', borderRadius: 2, boxShadow: 3 }}>
+                      {/* --- MODIFICATION: Reduced image height --- */}
+                      <CardMedia
+                        component="img"
+                        height="120"
+                        image={course.image}
+                        alt={course.title}
+                      />
+                      <CardContent sx={{ flexGrow: 1, p: 1.5 }}>
+                        {/* --- MODIFICATION: Smaller, shorter title text --- */}
+                        <Typography variant="subtitle1" component="h2" gutterBottom sx={{ fontWeight: 'bold' }}>
+                          {course.title}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" gutterBottom>
+                          By {course.instructor}
+                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', my: 1 }}>
+                          <Typography variant="body2" component="span" fontWeight="bold" sx={{ color: '#b4690e', mr: 0.5 }}>
+                            {course.rating}
+                          </Typography>
+                          <Rating name="read-only" value={course.rating} precision={0.1} readOnly size="small" />
+                          <Typography variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
+                            ({course.reviews})
+                          </Typography>
+                        </Box>
+                        <Chip label={course.level} size="small" variant="outlined" />
+                      </CardContent>
+                      <CardActions sx={{ p: 1.5, pt: 0, justifyContent: 'space-between', alignItems: 'center' }}>
+                        {/* --- MODIFICATION: Smaller price text --- */}
+                        <Typography variant="h6" fontWeight="bold">
+                          {course.price}
+                        </Typography>
+                        <Button variant="contained" size="small">
+                          Add to Cart
+                        </Button>
+                      </CardActions>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
             </Grid>
+
           </Grid>
         </Container>
       )}
 
-      {/* The CompleteProfilePopup will now open if the profile is incomplete */}
       <CompleteProfilePopup open={showPopup} onClose={handleClosePopup} />
       <LandingAuthPopup
         open={showLandingAuthPopup && !currentUser}
