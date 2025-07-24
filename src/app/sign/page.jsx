@@ -12,11 +12,6 @@ import {
   Alert,
 } from '@mui/material';
 import { useRouter } from 'next/navigation';
-<<<<<<< HEAD
-=======
-
-import { apiFetch } from '../utils/api';
->>>>>>> 831649e28208e87eb42bf6546cea805d7df83b06
 
 const initialForm = {
   fullName: '',
