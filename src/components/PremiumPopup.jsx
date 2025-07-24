@@ -21,41 +21,38 @@ import CloseIcon from '@mui/icons-material/Close';
 
 const plans = [
   {
-    title: 'BASIC',
-    price: '₹599',
-    priceNum: 599,
+    title: 'ESSENTIAL',
+    price: '₹499',
+    priceNum: 499,
     color: ['#00c6ff', '#0072ff'],
-    features: [true, false, true, false, true, false],
+    features: [true, true, false, false, true, false],
   },
   {
-    title: 'STANDART',
-    price: '₹699',
-    priceNum: 699,
+    title: 'PROFESSIONAL',
+    price: '₹899',
+    priceNum: 899,
     color: ['#a044ff', '#6a3093'],
-    features: [true, false, true, true, true, true],
+    features: [true, true, true, true, true, false],
   },
   {
-    title: 'PREMIUM',
-    price: '₹999',
-    priceNum: 999,
+    title: 'EXECUTIVE',
+    price: '₹1499',
+    priceNum: 1499,
     color: ['#ff4e50', '#f9d423'],
     features: [true, true, true, true, true, true],
   },
 ];
 
 const featureLabels = [
-  'Lorem ipsum dolor sit amet',
-  'Consectetur adipiscing elit',
-  'Euismod tincidunt ut',
-  'Ut wisi enim ad minim',
-  'Lorem ipsum dolor sit amet',
-  'Consectetur adipiscing elit',
+  'Multiple Resume Templates',
+  'PDF Download',
+  'ATS-Friendly Formatting',
+  'Cover Letter Builder',
+  'Unlimited Edits',
+  'Priority Customer Support',
 ];
 
-
 const PricingPopup = ({ open, handleClose }) => {
-
-  // --- MODIFICATION: Helper function to dynamically load the Razorpay script ---
   const loadRazorpayScript = (src) => {
     return new Promise((resolve) => {
       const script = document.createElement('script');
@@ -71,7 +68,6 @@ const PricingPopup = ({ open, handleClose }) => {
   };
 
   const displayRazorpay = async (plan) => {
-    // Load the script
     const res = await loadRazorpayScript('https://checkout.razorpay.com/v1/checkout.js');
 
     if (!res) {
@@ -85,29 +81,27 @@ const PricingPopup = ({ open, handleClose }) => {
       key: 'rzp_test_PBUluwX3e15zwd', // Your test API key
       amount: amountInPaise,
       currency: 'INR',
-      name: 'Your Company Name',
+      name: 'Resume.io',
       description: `Purchase of ${plan.title} Plan`,
-      image: 'https://example.com/your_logo.png',
+      image: 'https://img.freepik.com/free-vector/colorful-bird-illustration-gradient_343694-1741.jpg',
       
       handler: function (response) {
         alert(`Payment successful! Payment ID: ${response.razorpay_payment_id}`);
         handleClose();
       },
       prefill: {
-        name: 'J. Smith',
-        email: 'jsmith@example.com',
+        name: 'Your Name',
+        email: 'your@email.com',
         contact: '9999999999',
       },
       notes: {
         plan_title: plan.title,
-        address: 'Indore, Madhya Pradesh',
       },
       theme: {
         color: '#3399cc',
       },
     };
 
-    // --- MODIFICATION: Ensure window.Razorpay exists before using it ---
     try {
         const paymentObject = new window.Razorpay(options);
         paymentObject.open();
@@ -117,12 +111,11 @@ const PricingPopup = ({ open, handleClose }) => {
     }
   };
 
-
   return (
     <Dialog open={open} onClose={handleClose} fullWidth maxWidth="md">
       <DialogTitle sx={{ m: 0, p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="h6">
-          Choose Your Plan
+          Choose Your Resume Plan
         </Typography>
         <IconButton onClick={handleClose} aria-label="close">
           <CloseIcon />
@@ -133,35 +126,79 @@ const PricingPopup = ({ open, handleClose }) => {
         <Grid container spacing={2} justifyContent="center">
           {plans.map((plan, index) => (
             <Grid item xs={12} sm={6} md={4} key={index}>
-              <Box sx={{ borderRadius: 3, boxShadow: 3, p: 3, textAlign: 'center', backgroundColor: '#fff', position: 'relative', overflow: 'hidden' }}>
-                <Box sx={{ position: 'absolute', top: 20, left: -40, background: `linear-gradient(135deg, ${plan.color[0]}, ${plan.color[1]})`, color: '#fff', px: 6, py: 1, transform: 'rotate(-45deg)', fontWeight: 'bold' }}>
+              <Box sx={{ 
+                borderRadius: 3, 
+                boxShadow: 3, 
+                p: 3, 
+                textAlign: 'center', 
+                backgroundColor: '#fff', 
+                position: 'relative', 
+                overflow: 'hidden',
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between'
+              }}>
+                <Box sx={{ 
+                  position: 'absolute', 
+                  top: 20, 
+                  left: -40, 
+                  background: `linear-gradient(135deg, ${plan.color[0]}, ${plan.color[1]})`, 
+                  color: '#fff', 
+                  px: 6, 
+                  py: 1, 
+                  transform: 'rotate(-45deg)', 
+                  fontWeight: 'bold',
+                  fontSize: '0.8rem'
+                }}>
                   {plan.price}
                 </Box>
-                <Typography variant="h6" fontWeight="bold" gutterBottom sx={{ mt: 4 }}>
-                  {plan.title}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" gutterBottom>
-                  PER MONTH
-                </Typography>
-                <List dense>
-                  {featureLabels.map((label, i) => (
-                    <ListItem key={i} disableGutters>
-                      <ListItemIcon>
-                        {plan.features[i] ? <CheckCircleIcon color="success" fontSize="small" /> : <CancelIcon color="error" fontSize="small" />}
-                      </ListItemIcon>
-                      <ListItemText primary={<Typography variant="body2" color="text.secondary">{label}</Typography>} />
-                    </ListItem>
-                  ))}
-                </List>
-                <Button fullWidth variant="contained" onClick={() => displayRazorpay(plan)}
-                  sx={{ mt: 2, background: `linear-gradient(to right, ${plan.color[0]}, ${plan.color[1]})`, color: '#fff', borderRadius: '20px', textTransform: 'none', fontWeight: 'bold' }}
+                <Box>
+                  <Typography variant="h6" fontWeight="bold" gutterBottom sx={{ mt: 4 }}>
+                    {plan.title}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" gutterBottom>
+                    PER MONTH
+                  </Typography>
+                  <List dense>
+                    {featureLabels.map((label, i) => (
+                      <ListItem key={i} disableGutters>
+                        <ListItemIcon>
+                          {plan.features[i] ? 
+                            <CheckCircleIcon color="success" fontSize="small" /> : 
+                            <CancelIcon color="error" fontSize="small" />
+                          }
+                        </ListItemIcon>
+                        <ListItemText primary={<Typography variant="body2" color="text.secondary">{label}</Typography>} />
+                      </ListItem>
+                    ))}
+                  </List>
+                </Box>
+                <Button 
+                  fullWidth 
+                  variant="contained" 
+                  onClick={() => displayRazorpay(plan)}
+                  sx={{ 
+                    mt: 2, 
+                    background: `linear-gradient(to right, ${plan.color[0]}, ${plan.color[1]})`, 
+                    color: '#fff', 
+                    borderRadius: '20px', 
+                    textTransform: 'none', 
+                    fontWeight: 'bold',
+                    py: 1.5
+                  }}
                 >
-                  ORDER NOW
+                  GET STARTED
                 </Button>
               </Box>
             </Grid>
           ))}
         </Grid>
+        <Box sx={{ textAlign: 'center', mt: 3 }}>
+          <Typography variant="body2" color="text.secondary">
+            14-day money back guarantee • Cancel anytime
+          </Typography>
+        </Box>
       </DialogContent>
     </Dialog>
   );

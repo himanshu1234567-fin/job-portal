@@ -2,8 +2,9 @@
 
 import React, { useEffect, useState } from 'react';
 import {
-  Box, Container, CircularProgress, Paper, Divider, Grid, Checkbox, Chip, Typography, Button, Card, CardMedia, CardContent, CardActions, Rating, Link
+  Box, Container, CircularProgress, Paper, Divider, Grid, Checkbox, Chip, Typography, Button, Card, CardMedia, CardContent, CardActions, Rating
 } from '@mui/material';
+import axios from '../lib/axiosInstance';
 import CompleteProfilePopup from '../components/PopupCard';
 import LandingAuthPopup from '../components/LandingAuthPopup';
 import Navbar from '../components/Navbar';
@@ -28,14 +29,12 @@ export default function ResumeBuilder() {
     for (const field of topLevelRequiredFields) {
       if (!profile[field]) return false;
     }
-    if (profile.experience === null || profile.experience === undefined) return false;
+    if (profile.experience == null) return false;
     if (!Array.isArray(profile.skills) || profile.skills.length === 0) return false;
     if (!Array.isArray(profile.education) || profile.education.length === 0) return false;
     const educationRecord = profile.education[0];
     for (const field of educationRequiredFields) {
-      if (educationRecord[field] === null || educationRecord[field] === undefined || educationRecord[field] === '') {
-        return false;
-      }
+      if (!educationRecord[field]) return false;
     }
     return true;
   };
@@ -95,10 +94,10 @@ export default function ResumeBuilder() {
       if (!token || !currentUser) return;
       setLoadingProfile(true);
       try {
-        const response = await fetch('http://localhost:5000/api/candidates/me', {
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        const response = await axios.get('/candidates/me', {
+          headers: { Authorization: `Bearer ${token}` }
         });
-        const data = await response.json();
+        const data = response.data;
         const isComplete = isProfileComplete(data);
         setShowPopup(!isComplete);
       } catch (err) {
@@ -118,14 +117,15 @@ export default function ResumeBuilder() {
       if (!token || !currentUser) return;
       setLoadingTasks(true);
       try {
-        const response = await fetch('http://localhost:5000/api/questions', {
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        const response = await axios.get('/questions', {
+          headers: { Authorization: `Bearer ${token}` }
         });
-        const data = await response.json();
+        const data = response.data;
         let fetchedTasks = [];
         if (Array.isArray(data)) fetchedTasks = data;
         else if (Array.isArray(data.data)) fetchedTasks = data.data;
         else if (data.questions) fetchedTasks = data.questions;
+
         const transformedTasks = fetchedTasks.map(task => ({
           title: task.title || task.question || 'Untitled Task',
           question: task.question || task.title || 'No question text provided',
@@ -140,6 +140,7 @@ export default function ResumeBuilder() {
         setLoadingTasks(false);
       }
     };
+
     if (currentUser) {
       fetchTasks();
       const intervalId = setInterval(fetchTasks, 30000);
@@ -148,7 +149,6 @@ export default function ResumeBuilder() {
   }, [currentUser]);
 
   const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
-
   const handleLogout = () => {
     localStorage.removeItem('currentUser');
     localStorage.removeItem('authToken');
@@ -156,10 +156,7 @@ export default function ResumeBuilder() {
     setShowLandingAuthPopup(true);
     setShowPopup(false);
   };
-
-  const handleClosePopup = () => {
-    setShowPopup(false);
-  };
+  const handleClosePopup = () => setShowPopup(false);
 
   if (authLoading || loadingProfile) {
     return (
@@ -189,18 +186,12 @@ export default function ResumeBuilder() {
                   <Box component="span" sx={{ color: 'primary.main' }}>faster!</Box>
                 </Typography>
                 <Box sx={{ mb: 4 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <Box sx={{ width: 8, height: 8, bgcolor: 'primary.main', borderRadius: '50%', mr: 2 }} />
-                    <Typography variant="body1">Get more headhunter contacts</Typography>
-                  </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <Box sx={{ width: 8, height: 8, bgcolor: 'primary.main', borderRadius: '50%', mr: 2 }} />
-                    <Typography variant="body1">Targeted guidance</Typography>
-                  </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Box sx={{ width: 8, height: 8, bgcolor: 'primary.main', borderRadius: '50%', mr: 2 }} />
-                    <Typography variant="body1">Confidence</Typography>
-                  </Box>
+                  {['Get more headhunter contacts', 'Targeted guidance', 'Confidence'].map((text, i) => (
+                    <Box key={i} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <Box sx={{ width: 8, height: 8, bgcolor: 'primary.main', borderRadius: '50%', mr: 2 }} />
+                      <Typography variant="body1">{text}</Typography>
+                    </Box>
+                  ))}
                 </Box>
                 <Button onClick={() => setShowLandingAuthPopup(true)} variant="contained" size="large" sx={{ px: 6, py: 1.5, fontSize: '1.1rem', mb: 3 }}>
                   Sign up for free
@@ -210,9 +201,9 @@ export default function ResumeBuilder() {
                 </Typography>
               </Grid>
               <Grid item xs={12} md={6}>
-                <Box sx={{ borderRadius: 4, height: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                <Box sx={{ borderRadius: 4, height: '400px', overflow: 'hidden' }}>
                   <img
-                    src="https://images.pexels.com/photos/6837641/pexels-photo-6837641.jpeg?_gl=1*1ba1y4d*_ga*MjEyMjIxMDExNC4xNzUzMDk3MTc3*_ga_8JE65Q40S6*czE3NTMwOTcxNzYkbzEkZzEkdDE3NTMwOTcxODIkajU0JGwwJGgw"
+                    src="https://images.pexels.com/photos/6837641/pexels-photo-6837641.jpeg"
                     alt="Person finding jobs"
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   />
@@ -224,9 +215,7 @@ export default function ResumeBuilder() {
       ) : (
         <Container maxWidth="lg" sx={{ py: 4 }}>
           <Grid container spacing={4}>
-            {/* Main Content Column */}
             <Grid item xs={12} md={8}>
-              {/* Welcome Section */}
               <Paper sx={{ p: 3, mb: 3, borderRadius: 2, boxShadow: 1 }}>
                 <Typography variant="h4" component="h1" gutterBottom sx={{ fontWeight: 'bold' }}>
                   Land a better job faster!
@@ -235,17 +224,11 @@ export default function ResumeBuilder() {
                   Welcome, {currentUser.fullName}!<br />
                   Benefit from expert support and feedback during every step of your job search.
                 </Typography>
-                <Button
-                  variant="contained"
-                  size="large"
-                  sx={{ mt: 2 }}
-                  href='/user/jobsearch'
-                >
+                <Button variant="contained" size="large" sx={{ mt: 2 }} href='/user/jobsearch'>
                   Start your search
                 </Button>
               </Paper>
 
-              {/* Tasks Section */}
               <Paper sx={{ p: 2, bgcolor: '#f5faff', borderRadius: 2, display: 'flex', flexDirection: 'column', mb: 3 }}>
                 <Typography variant="h6" fontWeight="bold" sx={{ color: '#003366', mb: 2 }}>
                   Tasks
@@ -277,57 +260,41 @@ export default function ResumeBuilder() {
                   </Box>
                 )}
               </Paper>
-              
-              {/* Quick Links */}
+
               <Paper sx={{ p: 3, mb: 3, borderRadius: 2, boxShadow: 1 }}>
-                <Typography variant="h6" component="h2" gutterBottom sx={{ fontWeight: 'bold' }}>
+                <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
                   Quick links
                 </Typography>
                 <Typography variant="body2" color="text.secondary" paragraph>
                   Important links related to your searches and bookmarks.
                 </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <Checkbox />
-                  <Typography>New job search</Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                  <Checkbox checked />
-                  <Typography>Previous job searches (1)</Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Checkbox checked />
-                  <Typography>Saved searches (0)</Typography>
-                </Box>
+                {['New job search', 'Previous job searches (1)', 'Saved searches (0)'].map((text, i) => (
+                  <Box key={i} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <Checkbox checked={i > 0} />
+                    <Typography>{text}</Typography>
+                  </Box>
+                ))}
               </Paper>
             </Grid>
 
-            {/* Sidebar Column */}
             <Grid item xs={12} md={4}>
-              <Typography variant="h5" component="h2" gutterBottom sx={{ fontWeight: 'bold' }}>
+              <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold' }}>
                 Recommended Courses
               </Typography>
-              {/* --- MODIFICATION: Reduced spacing between cards --- */}
               <Grid container spacing={3}>
                 {courses.map((course, index) => (
                   <Grid item key={index} xs={12} sm={6} md={12}>
-                    <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', borderRadius: 2, boxShadow: 3 }}>
-                      {/* --- MODIFICATION: Reduced image height --- */}
-                      <CardMedia
-                        component="img"
-                        height="120"
-                        image={course.image}
-                        alt={course.title}
-                      />
+                    <Card sx={{ display: 'flex', flexDirection: 'column', borderRadius: 2, boxShadow: 3 }}>
+                      <CardMedia component="img" height="120" image={course.image} alt={course.title} />
                       <CardContent sx={{ flexGrow: 1, p: 1.5 }}>
-                        {/* --- MODIFICATION: Smaller, shorter title text --- */}
-                        <Typography variant="subtitle1" component="h2" gutterBottom sx={{ fontWeight: 'bold' }}>
+                        <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
                           {course.title}
                         </Typography>
                         <Typography variant="body2" color="text.secondary" gutterBottom>
                           By {course.instructor}
                         </Typography>
                         <Box sx={{ display: 'flex', alignItems: 'center', my: 1 }}>
-                          <Typography variant="body2" component="span" fontWeight="bold" sx={{ color: '#b4690e', mr: 0.5 }}>
+                          <Typography variant="body2" fontWeight="bold" sx={{ color: '#b4690e', mr: 0.5 }}>
                             {course.rating}
                           </Typography>
                           <Rating name="read-only" value={course.rating} precision={0.1} readOnly size="small" />
@@ -337,21 +304,15 @@ export default function ResumeBuilder() {
                         </Box>
                         <Chip label={course.level} size="small" variant="outlined" />
                       </CardContent>
-                      <CardActions sx={{ p: 1.5, pt: 0, justifyContent: 'space-between', alignItems: 'center' }}>
-                        {/* --- MODIFICATION: Smaller price text --- */}
-                        <Typography variant="h6" fontWeight="bold">
-                          {course.price}
-                        </Typography>
-                        <Button variant="contained" size="small">
-                          Add to Cart
-                        </Button>
+                      <CardActions sx={{ p: 1.5, pt: 0, justifyContent: 'space-between' }}>
+                        <Typography variant="h6" fontWeight="bold">{course.price}</Typography>
+                        <Button variant="contained" size="small">Add to Cart</Button>
                       </CardActions>
                     </Card>
                   </Grid>
                 ))}
               </Grid>
             </Grid>
-
           </Grid>
         </Container>
       )}

@@ -2,22 +2,26 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  AppBar, Toolbar, IconButton, Button, Typography, Box, Avatar, CircularProgress, Tooltip, Drawer, List, ListItem, ListItemButton, ListItemText, Divider
+  AppBar, Toolbar, IconButton, Button, Typography, Box, Avatar,
+  CircularProgress, Tooltip, Drawer, List, ListItem, ListItemButton,
+  ListItemText, Divider
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
+import { usePathname } from 'next/navigation';
+import { motion } from 'framer-motion';
 
 const navigation = [
   { name: 'Home', href: '/' },
   { name: 'Jobs', href: '/user/jobsearch' },
   { name: 'Resume', href: '/user/ResumeBuilder' },
-  { name: 'Coaching', href: '#' },
+  { name: 'Courses', href: '/user/courses' },
 ];
 
 const ProfileAvatarWithProgress = ({ user, progress }) => {
-  const getProgressColor = (progressValue) => {
-    if (progressValue < 25) return '#d32f2f';
-    if (progressValue < 50) return '#fbc02d';
-    if (progressValue < 75) return '#ef6c00';
+  const getProgressColor = (value) => {
+    if (value < 25) return '#d32f2f';
+    if (value < 50) return '#fbc02d';
+    if (value < 75) return '#ef6c00';
     return '#2e7d32';
   };
 
@@ -28,10 +32,11 @@ const ProfileAvatarWithProgress = ({ user, progress }) => {
       <Avatar
         alt={user.fullName}
         sx={{
-          width: 32,
-          height: 32,
+          width: 36,
+          height: 36,
           bgcolor: 'primary.main',
           fontSize: '0.875rem',
+          boxShadow: 2
         }}
       >
         {user.fullName?.[0]}
@@ -41,7 +46,7 @@ const ProfileAvatarWithProgress = ({ user, progress }) => {
           <CircularProgress
             variant="determinate"
             value={100}
-            size={38}
+            size={42}
             thickness={4}
             sx={{
               color: '#e0e0e0',
@@ -54,7 +59,7 @@ const ProfileAvatarWithProgress = ({ user, progress }) => {
           <CircularProgress
             variant="determinate"
             value={progress}
-            size={38}
+            size={42}
             thickness={4}
             sx={{
               color: progressColor,
@@ -94,6 +99,7 @@ const Navbar = ({ currentUser, handleLogout, setShowLandingAuthPopup }) => {
   const [profileCompletePercent, setProfileCompletion] = useState(0);
   const [tooltipOpen, setTooltipOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const pathname = usePathname();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -125,7 +131,7 @@ const Navbar = ({ currentUser, handleLogout, setShowLandingAuthPopup }) => {
   }, [currentUser]);
 
   const drawerContent = (
-    <Box sx={{ width: 250 }} onClick={handleDrawerToggle}>
+    <Box sx={{ width: 260, py: 2 }} onClick={handleDrawerToggle}>
       <List>
         {navigation.map((item) => (
           <ListItem key={item.name} disablePadding>
@@ -135,7 +141,7 @@ const Navbar = ({ currentUser, handleLogout, setShowLandingAuthPopup }) => {
           </ListItem>
         ))}
       </List>
-      <Divider />
+      <Divider sx={{ my: 1 }} />
       {currentUser ? (
         <List>
           <ListItem disablePadding>
@@ -163,22 +169,63 @@ const Navbar = ({ currentUser, handleLogout, setShowLandingAuthPopup }) => {
 
   return (
     <>
-      <AppBar position="static" color="transparent" elevation={0}>
+      <AppBar
+        position="static"
+        color="transparent"
+        elevation={1}
+        sx={{ px: 2, py: 0.5, backdropFilter: 'blur(6px)' }}
+      >
         <Toolbar sx={{ justifyContent: 'space-between' }}>
           <a href="/" style={{ textDecoration: 'none' }}>
             <img
               alt="Logo"
               src="https://img.freepik.com/free-vector/colorful-bird-illustration-gradient_343694-1741.jpg"
               height={40}
+              style={{ borderRadius: '8px' }}
             />
           </a>
 
-          <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 2, alignItems: 'center' }}>
-            {navigation.map((item) => (
-              <Button key={item.name} href={item.href} color="inherit">
-                {item.name}
-              </Button>
-            ))}
+          {/* Navigation with animated active underline */}
+          <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 2, alignItems: 'center', position: 'relative' }}>
+            {navigation.map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <Box key={item.name} sx={{ position: 'relative' }}>
+                  <Button
+                    href={item.href}
+                    sx={{
+                      textTransform: 'none',
+                      fontWeight: 500,
+                      borderRadius: 2,
+                      px: 2,
+                      py: 1,
+                      color: isActive ? 'primary.main' : 'text.primary',
+                      '&:hover': {
+                        backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                      },
+                    }}
+                  >
+                    {item.name}
+                  </Button>
+                  {isActive && (
+                    <motion.div
+                      layoutId="nav-underline"
+                      style={{
+                        height: 3,
+                        borderRadius: 2,
+                        background: '#1976d2',
+                        position: 'absolute',
+                        bottom: 4,
+                        left: 12,
+                        right: 12,
+                      }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                    />
+                  )}
+                </Box>
+              );
+            })}
+
             {currentUser ? (
               <>
                 <Tooltip
@@ -197,11 +244,30 @@ const Navbar = ({ currentUser, handleLogout, setShowLandingAuthPopup }) => {
                     <ProfileAvatarWithProgress user={currentUser} progress={profileCompletePercent} />
                   </a>
                 </Tooltip>
-                <Button onClick={handleLogout} color="error">Logout</Button>
+                <Button
+                  onClick={handleLogout}
+                  color="error"
+                  sx={{
+                    ml: 1,
+                    textTransform: 'none',
+                    borderRadius: 2,
+                    fontWeight: 500
+                  }}
+                >
+                  Logout
+                </Button>
               </>
             ) : (
-              <Button onClick={() => setShowLandingAuthPopup(true)} variant="contained">
-                Log in/Sign up
+              <Button
+                onClick={() => setShowLandingAuthPopup(true)}
+                variant="contained"
+                sx={{
+                  textTransform: 'none',
+                  borderRadius: 2,
+                  fontWeight: 500
+                }}
+              >
+                Log in / Sign up
               </Button>
             )}
           </Box>
@@ -217,13 +283,13 @@ const Navbar = ({ currentUser, handleLogout, setShowLandingAuthPopup }) => {
         </Toolbar>
       </AppBar>
 
-      {/* Mobile Drawer */}
       <Drawer
         anchor="right"
         open={mobileOpen}
         onClose={handleDrawerToggle}
-        ModalProps={{
-          keepMounted: true,
+        ModalProps={{ keepMounted: true }}
+        PaperProps={{
+          sx: { borderTopLeftRadius: 12, borderBottomLeftRadius: 12 }
         }}
       >
         {drawerContent}

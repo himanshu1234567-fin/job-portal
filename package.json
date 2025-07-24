@@ -18,11 +18,12 @@
     "autoprefixer": "^10.4.17",
     "axios": "^1.10.0",
     "date-fns": "^4.1.0",
+    "framer-motion": "^12.23.7",
     "multer": "^2.0.2",
     "next": "13.4.19",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "sweetalert2": "^11.6.13",
+    "sweetalert2": "^11.22.2",
     "tailwind": "^2.3.1"
   },
   "devDependencies": {
