@@ -178,7 +178,7 @@ const JobSearchPage = () => {
             if (jobsWithDates.length > 0) setSelectedJob(jobsWithDates[0]);
         } catch (err) {
             // ✅ UPDATED: Set the specific error message you requested.
-            const errorMessage = 'Unable to Fetch jobs Reload';
+            const errorMessage = 'Unable to Fetch jobs,Please Reload!!';
             showError(errorMessage, 'Job Fetch Error');
         } finally {
             setLoading(false);
