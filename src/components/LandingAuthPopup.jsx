@@ -7,6 +7,8 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { useRouter } from 'next/navigation';
+import axios from 'axios';
+
 
 export default function LandingAuthPopup({ open, onSuccess, onClose }) {
   const [tab, setTab] = useState(0);
@@ -19,7 +21,7 @@ export default function LandingAuthPopup({ open, onSuccess, onClose }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [signInEmail, setSignInEmail] = useState('');
   const [signInPassword, setSignInPassword] = useState('');
-
+  
   useEffect(() => {
     if (open) {
       setTab(0);
@@ -56,16 +58,15 @@ export default function LandingAuthPopup({ open, onSuccess, onClose }) {
       return setError('Passwords do not match.');
 
     try {
-      const res = await fetch('http://localhost:5000/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fullName, email, password, confirmPassword }),
+      // ✅ Use axios.post for a cleaner API call
+      const res = await axios.post('http://localhost:5000/api/auth/register', {
+        fullName,
+        email,
+        password,
+        confirmPassword,
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Registration failed');
-
-      const { user, token } = data;
+      const { user, token } = res.data; // Data is already parsed by axios
       if (!user || !token) throw new Error('Invalid response from server.');
 
       localStorage.setItem('currentUser', JSON.stringify(user));
@@ -73,7 +74,8 @@ export default function LandingAuthPopup({ open, onSuccess, onClose }) {
 
       completeLogin();
     } catch (err) {
-      setError(err.message || 'Registration failed.');
+      // ✅ Axios provides a more detailed error object
+      setError(err.response?.data?.message || err.message || 'Registration failed.');
     }
   };
 
@@ -85,16 +87,13 @@ export default function LandingAuthPopup({ open, onSuccess, onClose }) {
       return setError('Please enter both email and password.');
 
     try {
-      const res = await fetch('http://localhost:5000/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: signInEmail, password: signInPassword }),
+      // ✅ Use axios.post for a cleaner API call
+      const res = await axios.post('http://localhost:5000/api/auth/login', {
+        email: signInEmail,
+        password: signInPassword,
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Login failed');
-
-      const { user, token } = data;
+      const { user, token } = res.data; // Data is already parsed by axios
       if (!user || !token) throw new Error('Invalid response from server.');
 
       localStorage.setItem('currentUser', JSON.stringify(user));
@@ -102,7 +101,8 @@ export default function LandingAuthPopup({ open, onSuccess, onClose }) {
 
       completeLogin();
     } catch (err) {
-      setError(err.message || 'Login failed.');
+      // ✅ Axios provides a more detailed error object
+      setError(err.response?.data?.message || err.message || 'Login failed.');
     }
   };
 

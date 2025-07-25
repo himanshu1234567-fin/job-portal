@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import axios from 'axios'; // Import axios
 import {
   Dialog,
   DialogContent,
@@ -18,6 +19,18 @@ import {
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import CloseIcon from '@mui/icons-material/Close';
+// Removed unused Receipt icon import
+
+// This function can be placed outside the component or in a utils file
+const loadRazorpayScript = (src) => {
+  return new Promise((resolve) => {
+    const script = document.createElement('script');
+    script.src = src;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
 
 const plans = [
   {
@@ -53,61 +66,89 @@ const featureLabels = [
 ];
 
 const PricingPopup = ({ open, handleClose }) => {
-  const loadRazorpayScript = (src) => {
-    return new Promise((resolve) => {
-      const script = document.createElement('script');
-      script.src = src;
-      script.onload = () => {
-        resolve(true);
-      };
-      script.onerror = () => {
-        resolve(false);
-      };
-      document.body.appendChild(script);
-    });
-  };
 
-  const displayRazorpay = async (plan) => {
-    const res = await loadRazorpayScript('https://checkout.razorpay.com/v1/checkout.js');
-
-    if (!res) {
-      alert('Razorpay SDK failed to load. Are you online?');
+  const handlePayment = async (plan) => {
+    const amount = plan.priceNum;
+    if (amount <= 0) {
+      alert('Invalid plan price!');
       return;
     }
 
-    const amountInPaise = plan.priceNum * 100;
-
-    const options = {
-      key: 'rzp_test_PBUluwX3e15zwd', // Your test API key
-      amount: amountInPaise,
-      currency: 'INR',
-      name: 'Resume.io',
-      description: `Purchase of ${plan.title} Plan`,
-      image: 'https://img.freepik.com/free-vector/colorful-bird-illustration-gradient_343694-1741.jpg',
-      
-      handler: function (response) {
-        alert(`Payment successful! Payment ID: ${response.razorpay_payment_id}`);
-        handleClose();
-      },
-      prefill: {
-        name: 'Your Name',
-        email: 'your@email.com',
-        contact: '9999999999',
-      },
-      notes: {
-        plan_title: plan.title,
-      },
-      theme: {
-        color: '#3399cc',
-      },
-    };
+    const sdkReady = await loadRazorpayScript('https://checkout.razorpay.com/v1/checkout.js');
+    if (!sdkReady) {
+      alert('Failed to load Razorpay SDK. Check your connection.');
+      return;
+    }
 
     try {
-        const paymentObject = new window.Razorpay(options);
-        paymentObject.open();
+      // Create the order on your server
+      const { data: order } = await axios.post(
+        'http://localhost:5000/api/admin-dashboard/make-payment',
+        // ✅ FIX: Changed "Receipt" to "receipt" to match the backend controller
+        { amount: amount, currency: 'INR', receipt: `receipt_${Date.now()}` },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          },
+        }
+      );
+
+      // Setup Razorpay checkout options
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_PBUluwX3e15zwd',
+        amount: order.amount,
+        currency: order.currency,
+        name: 'Your Company Name', // Replace with your company name
+        description: `${plan.title} Plan Payment`,
+        order_id: order.id,
+        prefill: {
+          name: localStorage.getItem('userName') || '',
+          email: localStorage.getItem('userEmail') || '',
+          contact: localStorage.getItem('userContact') || '',
+        },
+        notes: {
+            plan_title: plan.title,
+        },
+        theme: {
+            color: '#3399cc',
+        },
+        // Handler function called on successful payment
+        handler: async (response) => {
+          try {
+            // Send only the fields required by the verifyPayment controller.
+            const { data: verifyRes } = await axios.post(
+              'http://localhost:5000/api/admin-dashboard/verify-payment',
+              {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              },
+              {
+                headers: {
+                  'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+                },
+              }
+            );
+            console.log('Payment verification success');
+            console.log('Payment verification response:', verifyRes);
+            alert(verifyRes.message || 'Payment verified successfully!');
+            handleClose(); // Close the popup on success
+          } catch (error) {
+            console.error('Error verifying payment:', error);
+            alert('Payment verification failed. Please contact support.');
+          }
+        },
+      };
+
+      // Open Razorpay checkout
+      const paymentObject = new window.Razorpay(options);
+      paymentObject.open();
+
     } catch (error) {
-        console.error(error);
-        alert("An error occurred while opening the payment gateway.");
+      console.error('Payment Error:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'An unknown error occurred.';
+      alert(`Could not initiate payment: ${errorMessage}`);
     }
   };
 
@@ -121,35 +162,21 @@ const PricingPopup = ({ open, handleClose }) => {
           <CloseIcon />
         </IconButton>
       </DialogTitle>
-
       <DialogContent>
         <Grid container spacing={2} justifyContent="center">
           {plans.map((plan, index) => (
             <Grid item xs={12} sm={6} md={4} key={index}>
-              <Box sx={{ 
-                borderRadius: 3, 
-                boxShadow: 3, 
-                p: 3, 
-                textAlign: 'center', 
-                backgroundColor: '#fff', 
-                position: 'relative', 
-                overflow: 'hidden',
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column',
+              <Box sx={{
+                borderRadius: 3, boxShadow: 3, p: 3, textAlign: 'center',
+                backgroundColor: '#fff', position: 'relative', overflow: 'hidden',
+                height: '100%', display: 'flex', flexDirection: 'column',
                 justifyContent: 'space-between'
               }}>
-                <Box sx={{ 
-                  position: 'absolute', 
-                  top: 20, 
-                  left: -40, 
-                  background: `linear-gradient(135deg, ${plan.color[0]}, ${plan.color[1]})`, 
-                  color: '#fff', 
-                  px: 6, 
-                  py: 1, 
-                  transform: 'rotate(-45deg)', 
-                  fontWeight: 'bold',
-                  fontSize: '0.8rem'
+                <Box sx={{
+                  position: 'absolute', top: 20, left: -40,
+                  background: `linear-gradient(135deg, ${plan.color[0]}, ${plan.color[1]})`,
+                  color: '#fff', px: 6, py: 1, transform: 'rotate(-45deg)',
+                  fontWeight: 'bold', fontSize: '0.8rem'
                 }}>
                   {plan.price}
                 </Box>
@@ -164,8 +191,8 @@ const PricingPopup = ({ open, handleClose }) => {
                     {featureLabels.map((label, i) => (
                       <ListItem key={i} disableGutters>
                         <ListItemIcon>
-                          {plan.features[i] ? 
-                            <CheckCircleIcon color="success" fontSize="small" /> : 
+                          {plan.features[i] ?
+                            <CheckCircleIcon color="success" fontSize="small" /> :
                             <CancelIcon color="error" fontSize="small" />
                           }
                         </ListItemIcon>
@@ -174,18 +201,15 @@ const PricingPopup = ({ open, handleClose }) => {
                     ))}
                   </List>
                 </Box>
-                <Button 
-                  fullWidth 
-                  variant="contained" 
-                  onClick={() => displayRazorpay(plan)}
-                  sx={{ 
-                    mt: 2, 
-                    background: `linear-gradient(to right, ${plan.color[0]}, ${plan.color[1]})`, 
-                    color: '#fff', 
-                    borderRadius: '20px', 
-                    textTransform: 'none', 
-                    fontWeight: 'bold',
-                    py: 1.5
+                <Button
+                  fullWidth
+                  variant="contained"
+                  onClick={() => handlePayment(plan)}
+                  sx={{
+                    mt: 2,
+                    background: `linear-gradient(to right, ${plan.color[0]}, ${plan.color[1]})`,
+                    color: '#fff', borderRadius: '20px', textTransform: 'none',
+                    fontWeight: 'bold', py: 1.5
                   }}
                 >
                   GET STARTED

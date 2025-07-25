@@ -4,11 +4,12 @@ import React, { useState, useEffect } from 'react';
 import {
   AppBar, Toolbar, IconButton, Button, Typography, Box, Avatar,
   CircularProgress, Tooltip, Drawer, List, ListItem, ListItemButton,
-  ListItemText, Divider
+  ListItemText, Divider, Skeleton
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
+import axios from 'axios';
 
 const navigation = [
   { name: 'Home', href: '/' },
@@ -17,12 +18,35 @@ const navigation = [
   { name: 'Courses', href: '/user/courses' },
 ];
 
+// ✅ NEW: Skeleton component for the Navbar loading state
+const NavbarSkeleton = () => (
+  <AppBar
+    position="static"
+    color="transparent"
+    elevation={1}
+    sx={{ px: 2, py: 0.5 }}
+  >
+    <Toolbar sx={{ justifyContent: 'space-between' }}>
+      <Skeleton variant="rectangular" width={40} height={40} sx={{ borderRadius: '8px' }} />
+      <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 2, alignItems: 'center' }}>
+        <Skeleton variant="text" width={60} height={30} />
+        <Skeleton variant="text" width={60} height={30} />
+        <Skeleton variant="text" width={60} height={30} />
+        <Skeleton variant="text" width={60} height={30} />
+        <Skeleton variant="rounded" width={150} height={40} sx={{ ml: 2 }} />
+      </Box>
+      <Skeleton variant="circular" width={24} height={24} sx={{ display: { md: 'none' } }} />
+    </Toolbar>
+  </AppBar>
+);
+
+
 const ProfileAvatarWithProgress = ({ user, progress }) => {
   const getProgressColor = (value) => {
-    if (value < 25) return '#d32f2f';
-    if (value < 50) return '#fbc02d';
-    if (value < 75) return '#ef6c00';
-    return '#2e7d32';
+    if (value < 25) return '#d32f2f'; // red
+    if (value < 50) return '#fbc02d'; // yellow
+    if (value < 75) return '#808000'; // olive
+    return '#2e7d32'; // green
   };
 
   const progressColor = getProgressColor(progress);
@@ -31,13 +55,7 @@ const ProfileAvatarWithProgress = ({ user, progress }) => {
     <Box sx={{ position: 'relative', display: 'inline-flex', '&:hover .progress-percent': { opacity: 1 } }}>
       <Avatar
         alt={user.fullName}
-        sx={{
-          width: 36,
-          height: 36,
-          bgcolor: 'primary.main',
-          fontSize: '0.875rem',
-          boxShadow: 2
-        }}
+        sx={{ width: 36, height: 36, bgcolor: 'primary.main', fontSize: '0.875rem', boxShadow: 2 }}
       >
         {user.fullName?.[0]}
       </Avatar>
@@ -48,43 +66,22 @@ const ProfileAvatarWithProgress = ({ user, progress }) => {
             value={100}
             size={42}
             thickness={4}
-            sx={{
-              color: '#e0e0e0',
-              position: 'absolute',
-              top: -3,
-              left: -3,
-              zIndex: 0,
-            }}
+            sx={{ color: '#e0e0e0', position: 'absolute', top: -3, left: -3, zIndex: 0 }}
           />
           <CircularProgress
             variant="determinate"
             value={progress}
             size={42}
             thickness={4}
-            sx={{
-              color: progressColor,
-              position: 'absolute',
-              top: -3,
-              left: -3,
-              zIndex: 1,
-            }}
+            sx={{ color: progressColor, position: 'absolute', top: -3, left: -3, zIndex: 1 }}
           />
           <Box
             className="progress-percent"
             sx={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: progressColor,
-              fontSize: '0.6rem',
-              fontWeight: 'bold',
-              opacity: 0,
-              transition: 'opacity 0.3s',
+              position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: progressColor, fontSize: '0.6rem', fontWeight: 'bold',
+              opacity: 0, transition: 'opacity 0.3s',
             }}
           >
             {progress}%
@@ -95,39 +92,113 @@ const ProfileAvatarWithProgress = ({ user, progress }) => {
   );
 };
 
-const Navbar = ({ currentUser, handleLogout, setShowLandingAuthPopup }) => {
+const Navbar = ({ currentUser, handleLogout, handleLoginSuccess, setShowLandingAuthPopup }) => {
   const [profileCompletePercent, setProfileCompletion] = useState(0);
   const [tooltipOpen, setTooltipOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
   const pathname = usePathname();
+
+  useEffect(() => {
+    setAuthLoading(false);
+  }, []);
+
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
 
+  const handleLoginClick = async (credentials) => {
+    setIsLoggingIn(true);
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(credentials),
+      });
+
+      if (!response.ok) {
+        let errorMessage = `Error: ${response.status} ${response.statusText}`;
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+      
+      const data = await response.json();
+      handleLoginSuccess(data);
+
+    } catch (error) {
+      console.error('Error logging in:', error.message);
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const handleLogoutClick = async () => {
+    setIsLoggingOut(true);
+    try {
+      const response = await fetch('http://localhost:5000/api/admin-dashboard/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+        },
+      });
+
+      if (!response.ok) {
+        let errorMessage = `Error: ${response.status} ${response.statusText}`;
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        }
+        throw new Error(errorMessage);
+      }
+      
+      handleLogout();
+
+    } catch (error) {
+      console.error('Error logging out:', error.message);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
   useEffect(() => {
-    const updateProfileProgress = () => {
-      if (currentUser && typeof window !== 'undefined') {
-        const storedProgress = localStorage.getItem('profileCompletePercent');
-        const progress = parseInt(storedProgress, 10) || 0;
-        setProfileCompletion(progress);
-        setTooltipOpen(progress > 0 && progress < 75);
-      } else {
+    const fetchProfileCompletion = async () => {
+      if (!currentUser) {
         setProfileCompletion(0);
         setTooltipOpen(false);
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('authToken');
+        if (!token) return;
+
+        const response = await axios.get("http://localhost:5000/api/candidates/me", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (response.data && typeof response.data.profileCompletion !== 'undefined') {
+          const progress = response.data.profileCompletion;
+          setProfileCompletion(progress);
+          setTooltipOpen(progress > 0 && progress < 75);
+        }
+      } catch (error) {
+        console.error("Failed to fetch profile completion:", error);
+        setProfileCompletion(0);
       }
     };
 
-    updateProfileProgress();
-    window.addEventListener('storage', (e) => {
-      if (e.key === 'profileCompletePercent') updateProfileProgress();
-    });
-    window.addEventListener('profileUpdated', updateProfileProgress);
-
-    return () => {
-      window.removeEventListener('storage', updateProfileProgress);
-      window.removeEventListener('profileUpdated', updateProfileProgress);
-    };
+    fetchProfileCompletion();
   }, [currentUser]);
 
   const drawerContent = (
@@ -150,8 +221,8 @@ const Navbar = ({ currentUser, handleLogout, setShowLandingAuthPopup }) => {
             </ListItemButton>
           </ListItem>
           <ListItem disablePadding>
-            <ListItemButton onClick={handleLogout}>
-              <ListItemText primary="Logout" />
+            <ListItemButton onClick={handleLogoutClick} disabled={isLoggingOut}>
+              <ListItemText primary={isLoggingOut ? 'Logging out...' : 'Logout'} />
             </ListItemButton>
           </ListItem>
         </List>
@@ -166,6 +237,10 @@ const Navbar = ({ currentUser, handleLogout, setShowLandingAuthPopup }) => {
       )}
     </Box>
   );
+  
+  if (authLoading) {
+    return <NavbarSkeleton />;
+  }
 
   return (
     <>
@@ -185,7 +260,6 @@ const Navbar = ({ currentUser, handleLogout, setShowLandingAuthPopup }) => {
             />
           </a>
 
-          {/* Navigation with animated active underline */}
           <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 2, alignItems: 'center', position: 'relative' }}>
             {navigation.map((item) => {
               const isActive = pathname === item.href;
@@ -194,15 +268,9 @@ const Navbar = ({ currentUser, handleLogout, setShowLandingAuthPopup }) => {
                   <Button
                     href={item.href}
                     sx={{
-                      textTransform: 'none',
-                      fontWeight: 500,
-                      borderRadius: 2,
-                      px: 2,
-                      py: 1,
+                      textTransform: 'none', fontWeight: 500, borderRadius: 2, px: 2, py: 1,
                       color: isActive ? 'primary.main' : 'text.primary',
-                      '&:hover': {
-                        backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                      },
+                      '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' },
                     }}
                   >
                     {item.name}
@@ -211,13 +279,8 @@ const Navbar = ({ currentUser, handleLogout, setShowLandingAuthPopup }) => {
                     <motion.div
                       layoutId="nav-underline"
                       style={{
-                        height: 3,
-                        borderRadius: 2,
-                        background: '#1976d2',
-                        position: 'absolute',
-                        bottom: 4,
-                        left: 12,
-                        right: 12,
+                        height: 3, borderRadius: 2, background: '#1976d2',
+                        position: 'absolute', bottom: 4, left: 12, right: 12,
                       }}
                       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                     />
@@ -232,11 +295,7 @@ const Navbar = ({ currentUser, handleLogout, setShowLandingAuthPopup }) => {
                   title={`Your profile is ${profileCompletePercent}% complete`}
                   open={tooltipOpen}
                   onOpen={() => setTooltipOpen(true)}
-                  onClose={() => {
-                    if (!(profileCompletePercent > 0 && profileCompletePercent < 75)) {
-                      setTooltipOpen(false);
-                    }
-                  }}
+                  onClose={() => { if (!(profileCompletePercent > 0 && profileCompletePercent < 75)) { setTooltipOpen(false); }}}
                   arrow
                   placement="bottom"
                 >
@@ -245,27 +304,19 @@ const Navbar = ({ currentUser, handleLogout, setShowLandingAuthPopup }) => {
                   </a>
                 </Tooltip>
                 <Button
-                  onClick={handleLogout}
+                  onClick={handleLogoutClick}
+                  disabled={isLoggingOut}
                   color="error"
-                  sx={{
-                    ml: 1,
-                    textTransform: 'none',
-                    borderRadius: 2,
-                    fontWeight: 500
-                  }}
+                  sx={{ ml: 1, textTransform: 'none', borderRadius: 2, fontWeight: 500, minWidth: '90px' }}
                 >
-                  Logout
+                  {isLoggingOut ? <CircularProgress size={24} color="inherit" /> : 'Logout'}
                 </Button>
               </>
             ) : (
               <Button
                 onClick={() => setShowLandingAuthPopup(true)}
                 variant="contained"
-                sx={{
-                  textTransform: 'none',
-                  borderRadius: 2,
-                  fontWeight: 500
-                }}
+                sx={{ textTransform: 'none', borderRadius: 2, fontWeight: 500 }}
               >
                 Log in / Sign up
               </Button>
@@ -288,9 +339,7 @@ const Navbar = ({ currentUser, handleLogout, setShowLandingAuthPopup }) => {
         open={mobileOpen}
         onClose={handleDrawerToggle}
         ModalProps={{ keepMounted: true }}
-        PaperProps={{
-          sx: { borderTopLeftRadius: 12, borderBottomLeftRadius: 12 }
-        }}
+        PaperProps={{ sx: { borderTopLeftRadius: 12, borderBottomLeftRadius: 12 } }}
       >
         {drawerContent}
       </Drawer>

@@ -2,14 +2,75 @@
 
 import React, { useEffect, useState } from 'react';
 import {
-  Box, Container, CircularProgress, Paper, Divider, Grid, Checkbox, Chip, Typography, Button, Card, CardMedia, CardContent, CardActions, Rating
+  Box, Container, Paper, Divider, Grid, Typography, Button, Card, CardMedia, CardContent, Checkbox, Chip, CardActions, Rating, Skeleton
 } from '@mui/material';
-import axios from '../lib/axiosInstance';
+import axios from 'axios';
 import CompleteProfilePopup from '../components/PopupCard';
 import LandingAuthPopup from '../components/LandingAuthPopup';
 import Navbar from '../components/Navbar';
+import { useError } from '../context/ErrorContext';
+
+// ✅ NEW: Skeleton component for the main dashboard layout
+const DashboardSkeleton = () => (
+  <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Grid container spacing={4}>
+      <Grid item xs={12} md={8}>
+        {/* Welcome Banner Skeleton */}
+        <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
+          <Skeleton variant="text" width="60%" height={40} />
+          <Skeleton variant="text" width="80%" height={20} sx={{ mt: 1 }}/>
+          <Skeleton variant="text" width="70%" height={20} />
+          <Skeleton variant="rectangular" width={150} height={40} sx={{ mt: 2, borderRadius: 1 }} />
+        </Paper>
+        {/* Tasks List Skeleton */}
+        <Paper sx={{ p: 2, mb: 3, borderRadius: 2 }}>
+          <Skeleton variant="text" width="30%" height={30} sx={{ mb: 2 }} />
+          <Box>
+            {[...Array(3)].map((_, i) => (
+              <Box key={i} sx={{ mb: 2 }}>
+                <Skeleton variant="text" width="50%" height={24} />
+                <Skeleton variant="text" width="30%" height={18} />
+                <Divider sx={{ my: 1 }} />
+              </Box>
+            ))}
+          </Box>
+        </Paper>
+         {/* Quick Links Skeleton */}
+        <Paper sx={{ p: 3, borderRadius: 2 }}>
+          <Skeleton variant="text" width="40%" height={30} />
+          <Skeleton variant="text" width="70%" height={20} sx={{ mt: 1, mb: 2 }}/>
+           {[...Array(3)].map((_, i) => (
+              <Box key={i} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <Skeleton variant="rectangular" width={24} height={24} sx={{ mr: 1 }}/>
+                <Skeleton variant="text" width="40%" height={24} />
+              </Box>
+            ))}
+        </Paper>
+      </Grid>
+      <Grid item xs={12} md={4}>
+        <Skeleton variant="text" width="80%" height={35} sx={{ mb: 2 }} />
+        {/* Course Cards Skeleton */}
+        {[...Array(3)].map((_, i) => (
+           <Card key={i} sx={{ mb: 3, boxShadow: 3 }}>
+              <Skeleton variant="rectangular" height={120} />
+              <CardContent>
+                <Skeleton variant="text" height={24} />
+                <Skeleton variant="text" width="60%" height={20} />
+              </CardContent>
+              <CardActions sx={{p: 1.5, pt: 0, justifyContent: 'space-between'}}>
+                 <Skeleton variant="text" width="30%" height={30} />
+                 <Skeleton variant="rectangular" width={80} height={30} />
+              </CardActions>
+            </Card>
+        ))}
+      </Grid>
+    </Grid>
+  </Container>
+);
+
 
 export default function ResumeBuilder() {
+  const { showError } = useError();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [tasks, setTasks] = useState([]);
@@ -17,27 +78,7 @@ export default function ResumeBuilder() {
   const [showPopup, setShowPopup] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const [showLandingAuthPopup, setShowLandingAuthPopup] = useState(false);
-  const [loadingProfile, setLoadingProfile] = useState(false);
-
-  const isProfileComplete = (profile) => {
-    if (!profile) return false;
-    const topLevelRequiredFields = ['fullName', 'email', 'dob', 'phone', 'desirableJob'];
-    const educationRequiredFields = [
-      'college', 'collegeDegree', 'passingYear', 'cgpa',
-      'board10', 'percentage10', 'board12', 'percentage12'
-    ];
-    for (const field of topLevelRequiredFields) {
-      if (!profile[field]) return false;
-    }
-    if (profile.experience == null) return false;
-    if (!Array.isArray(profile.skills) || profile.skills.length === 0) return false;
-    if (!Array.isArray(profile.education) || profile.education.length === 0) return false;
-    const educationRecord = profile.education[0];
-    for (const field of educationRequiredFields) {
-      if (!educationRecord[field]) return false;
-    }
-    return true;
-  };
+  const [loadingProfile, setLoadingProfile] = useState(true); // Start as true
 
   const courses = [
     {
@@ -91,25 +132,36 @@ export default function ResumeBuilder() {
   useEffect(() => {
     const fetchCandidateProfile = async () => {
       const token = localStorage.getItem('authToken');
-      if (!token || !currentUser) return;
+      if (!token || !currentUser) {
+          setLoadingProfile(false); // Stop loading if no user/token
+          return;
+      }
       setLoadingProfile(true);
       try {
-        const response = await axios.get('/candidates/me', {
+        const response = await axios.get('http://localhost:5000/api/candidates/me', {
           headers: { Authorization: `Bearer ${token}` }
         });
         const data = response.data;
-        const isComplete = isProfileComplete(data);
-        setShowPopup(!isComplete);
+        
+        if (data && typeof data.profileCompletion !== 'undefined') {
+          setShowPopup(data.profileCompletion < 100);
+        } else {
+          setShowPopup(true);
+        }
+
       } catch (err) {
-        console.error('Error fetching candidate profile:', err);
+        const errorMessage = err.response?.data?.message || 'Could not fetch your profile details. Please try again later.';
+        showError(errorMessage, 'Profile Error');
       } finally {
         setLoadingProfile(false);
       }
     };
     if (currentUser) {
       fetchCandidateProfile();
+    } else {
+        setLoadingProfile(false); // Ensure loading stops if there's no user
     }
-  }, [currentUser]);
+  }, [currentUser, showError]);
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -117,7 +169,7 @@ export default function ResumeBuilder() {
       if (!token || !currentUser) return;
       setLoadingTasks(true);
       try {
-        const response = await axios.get('/questions', {
+        const response = await axios.get('http://localhost:5000/api/questions', {
           headers: { Authorization: `Bearer ${token}` }
         });
         const data = response.data;
@@ -135,7 +187,8 @@ export default function ResumeBuilder() {
         }));
         setTasks(transformedTasks);
       } catch (err) {
-        console.error('Failed to load tasks:', err);
+        const errorMessage = err.response?.data?.message || 'Failed to load your tasks. Please refresh the page.';
+        showError(errorMessage, 'Task Loading Error');
       } finally {
         setLoadingTasks(false);
       }
@@ -146,7 +199,7 @@ export default function ResumeBuilder() {
       const intervalId = setInterval(fetchTasks, 30000);
       return () => clearInterval(intervalId);
     }
-  }, [currentUser]);
+  }, [currentUser, showError]);
 
   const handleDrawerToggle = () => setMobileOpen(!mobileOpen);
   const handleLogout = () => {
@@ -158,11 +211,12 @@ export default function ResumeBuilder() {
   };
   const handleClosePopup = () => setShowPopup(false);
 
+  // ✅ MODIFICATION: Use the new Skeleton component during the loading state
   if (authLoading || loadingProfile) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <CircularProgress size={60} />
-      </Box>
+       <Box sx={{ flexGrow: 1 }}>
+         <DashboardSkeleton />
+       </Box>
     );
   }
 
@@ -235,7 +289,6 @@ export default function ResumeBuilder() {
                 </Typography>
                 {loadingTasks ? (
                   <Box sx={{ textAlign: 'center', py: 4 }}>
-                    <CircularProgress />
                     <Typography sx={{ mt: 2 }}>Loading tasks...</Typography>
                   </Box>
                 ) : tasks.length === 0 ? (
@@ -270,7 +323,7 @@ export default function ResumeBuilder() {
                 </Typography>
                 {['New job search', 'Previous job searches (1)', 'Saved searches (0)'].map((text, i) => (
                   <Box key={i} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <Checkbox checked={i > 0} />
+                     <Checkbox checked={i > 0} />
                     <Typography>{text}</Typography>
                   </Box>
                 ))}

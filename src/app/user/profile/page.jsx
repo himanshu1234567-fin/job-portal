@@ -291,7 +291,8 @@ setCompletion(percent);
         experience: experiencePayload,
         skills: profileData.skills,
         resume: profileData.resume,
-        desirableJob: profileData.desirableJobs
+        desirableJob: profileData.desirableJobs,
+        profileCompletion: completion,
       };
 
       if (candidateId) {
