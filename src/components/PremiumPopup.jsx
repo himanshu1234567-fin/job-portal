@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import axios from 'axios'; // Import axios
+import axios from 'axios';
 import {
   Dialog,
   DialogContent,
@@ -19,7 +19,7 @@ import {
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import CloseIcon from '@mui/icons-material/Close';
-// Removed unused Receipt icon import
+import { useError } from '../context/ErrorContext'; // ✅ 1. Import the useError hook
 
 // This function can be placed outside the component or in a utils file
 const loadRazorpayScript = (src) => {
@@ -66,17 +66,19 @@ const featureLabels = [
 ];
 
 const PricingPopup = ({ open, handleClose }) => {
+  const { showError } = useError(); // ✅ 2. Instantiate the hook
 
   const handlePayment = async (plan) => {
     const amount = plan.priceNum;
     if (amount <= 0) {
-      alert('Invalid plan price!');
+      showError('Invalid plan price!', 'Configuration Error');
       return;
     }
 
     const sdkReady = await loadRazorpayScript('https://checkout.razorpay.com/v1/checkout.js');
     if (!sdkReady) {
-      alert('Failed to load Razorpay SDK. Check your connection.');
+      // ✅ 3. Replace alert with showError for a consistent UX
+      showError('Failed to load payment gateway. Please check your internet connection and try again.', 'Network Error');
       return;
     }
 
@@ -84,7 +86,6 @@ const PricingPopup = ({ open, handleClose }) => {
       // Create the order on your server
       const { data: order } = await axios.post(
         'http://localhost:5000/api/admin-dashboard/make-payment',
-        // ✅ FIX: Changed "Receipt" to "receipt" to match the backend controller
         { amount: amount, currency: 'INR', receipt: `receipt_${Date.now()}` },
         {
           headers: {
@@ -136,7 +137,9 @@ const PricingPopup = ({ open, handleClose }) => {
             handleClose(); // Close the popup on success
           } catch (error) {
             console.error('Error verifying payment:', error);
-            alert('Payment verification failed. Please contact support.');
+            // ✅ 4. Replace alert with showError in the verification catch block
+            const errorMessage = error.response?.data?.message || 'Payment verification failed. Please contact support.';
+            showError(errorMessage, 'Verification Failed');
           }
         },
       };
@@ -147,8 +150,9 @@ const PricingPopup = ({ open, handleClose }) => {
 
     } catch (error) {
       console.error('Payment Error:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'An unknown error occurred.';
-      alert(`Could not initiate payment: ${errorMessage}`);
+      // ✅ 5. Replace alert with showError in the main payment catch block
+      const errorMessage = error.response?.data?.message || 'Could not initiate payment. Please try again later.';
+      showError(errorMessage, 'Payment Error');
     }
   };
 

@@ -82,7 +82,6 @@ const SearchFilterSkeleton = () => (
     </Paper>
 );
 
-
 const JobItemSkeleton = () => (
     <Box sx={{ mb: 2 }}>
         <Paper elevation={0} variant="outlined" sx={{ p: 2.5 }}>
@@ -125,7 +124,6 @@ const JobDetailSkeleton = () => (
     </Paper>
 );
 
-
 const JobSearchPage = () => {
     const { showError } = useError();
     const [tabIndex, setTabIndex] = useState(0);
@@ -163,29 +161,28 @@ const JobSearchPage = () => {
     }, []);
 
     useEffect(() => {
-    const fetchJobs = async () => {
-        setLoading(true);
-        const url = 'https://remotive.com/api/remote-jobs?limit=100';
-        try {
-            const response = await axios.get(url);
-            const data = response.data;
-            const jobsWithDates = data.jobs.map((j) => ({
-                ...j,
-                publication_date_obj: new Date(j.publication_date),
-            }));
-            setAllJobs(jobsWithDates);
-            setJobs(jobsWithDates);
-            if (jobsWithDates.length > 0) setSelectedJob(jobsWithDates[0]);
-        } catch (err) {
-            // ✅ UPDATED: Set the specific error message you requested.
-            const errorMessage = 'Unable to Fetch jobs,Please Reload!!';
-            showError(errorMessage, 'Job Fetch Error');
-        } finally {
-            setLoading(false);
-        }
-    };
-    fetchJobs();
-}, [showError]);
+        const fetchJobs = async () => {
+            setLoading(true);
+            const url = 'https://remotive.com/api/remote-jobs?limit=100';
+            try {
+                const response = await axios.get(url);
+                const data = response.data;
+                const jobsWithDates = data.jobs.map((j) => ({
+                    ...j,
+                    publication_date_obj: new Date(j.publication_date),
+                }));
+                setAllJobs(jobsWithDates);
+                setJobs(jobsWithDates);
+                if (jobsWithDates.length > 0) setSelectedJob(jobsWithDates[0]);
+            } catch (err) {
+                const errorMessage = 'Unable to Fetch jobs,Please Reload!!';
+                showError(errorMessage, 'Job Fetch Error');
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchJobs();
+    }, [showError]);
 
     useEffect(() => {
         if (!allJobs.length) return;
@@ -199,15 +196,30 @@ const JobSearchPage = () => {
         }
     }, [allJobs]);
 
+    // ✅ NEW: Function to handle successful job application
+    const handleJobApplicationSuccess = (appliedJob) => {
+        // Add job to applied jobs list
+        setAppliedJobs((prev) => {
+            if (prev.some((j) => j.id === appliedJob.id)) return prev;
+            const updated = [...prev, appliedJob];
+            localStorage.setItem('appliedJobs', JSON.stringify(updated.map((j) => j.id)));
+            return updated;
+        });
+
+        // Remove from bookmarks if it was bookmarked
+        setBookmarkedJobs((prev) => prev.filter((job) => job.id !== appliedJob.id));
+
+        // Switch to applied tab to show the job
+        setTabIndex(2);
+        
+        // Clear pending job
+        setPendingApplyJob(null);
+    };
+
+    // ✅ MODIFIED: Updated handlePopupExited to use the new success handler
     const handlePopupExited = () => {
         if (pendingApplyJob) {
-            setAppliedJobs((prev) => {
-                if (prev.some((j) => j.id === pendingApplyJob.id)) return prev;
-                const updated = [...prev, pendingApplyJob];
-                localStorage.setItem('appliedJobs', JSON.stringify(updated.map((j) => j.id)));
-                return updated;
-            });
-            setPendingApplyJob(null);
+            handleJobApplicationSuccess(pendingApplyJob);
         }
     };
 
@@ -285,6 +297,7 @@ const JobSearchPage = () => {
         });
     };
 
+    // ✅ MODIFIED: Updated handleApplyConfirm to set pending job for later processing
     const handleApplyConfirm = (job) => {
         setPendingApplyJob(job);
         setOpenPopup(false);
@@ -298,7 +311,7 @@ const JobSearchPage = () => {
                 </Box>
             );
         }
-        
+       
         let jobListToRender = [];
         let message = "No results match your search criteria. ✨";
         switch (tabIndex) {
@@ -530,11 +543,13 @@ const JobSearchPage = () => {
                             )}
                         </Grid>
 
+                        {/* ✅ MODIFIED: Updated ApplyPopup with success callback */}
                         <ApplyPopup
                             open={openPopup}
                             handleClose={handleClosePopup}
                             job={selectedJob}
                             onApplyConfirm={() => handleApplyConfirm(selectedJob)}
+                            onPaymentSuccess={(appliedJob) => handleJobApplicationSuccess(appliedJob)}
                             TransitionProps={{ onExited: handlePopupExited }}
                         />
 
