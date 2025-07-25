@@ -25,7 +25,7 @@ import {
   ThemeProvider,
   createTheme,
   CssBaseline,
-  Skeleton 
+  Skeleton
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import TuneIcon from '@mui/icons-material/Tune';
@@ -60,7 +60,6 @@ const muiTheme = createTheme({
     },
 });
 
-// ✅ NEW: Skeleton component for the search filters
 const SearchFilterSkeleton = () => (
     <Paper elevation={0} variant="outlined" sx={{ p: 2, mb: 4 }}>
         <Grid container spacing={2} alignItems="center">
@@ -164,28 +163,29 @@ const JobSearchPage = () => {
     }, []);
 
     useEffect(() => {
-        const fetchJobs = async () => {
-            setLoading(true);
-            const url = 'https://remotive.com/api/remote-jobs?limit=100';
-            try {
-                const response = await axios.get(url);
-                const data = response.data;
-                const jobsWithDates = data.jobs.map((j) => ({
-                    ...j,
-                    publication_date_obj: new Date(j.publication_date),
-                }));
-                setAllJobs(jobsWithDates);
-                setJobs(jobsWithDates);
-                if (jobsWithDates.length > 0) setSelectedJob(jobsWithDates[0]);
-            } catch (err) {
-                const errorMessage = err.message || 'Something went wrong while fetching jobs';
-                showError(errorMessage, 'Job Fetch Error');
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchJobs();
-    }, [showError]);
+    const fetchJobs = async () => {
+        setLoading(true);
+        const url = 'https://remotive.com/api/remote-jobs?limit=100';
+        try {
+            const response = await axios.get(url);
+            const data = response.data;
+            const jobsWithDates = data.jobs.map((j) => ({
+                ...j,
+                publication_date_obj: new Date(j.publication_date),
+            }));
+            setAllJobs(jobsWithDates);
+            setJobs(jobsWithDates);
+            if (jobsWithDates.length > 0) setSelectedJob(jobsWithDates[0]);
+        } catch (err) {
+            // ✅ UPDATED: Set the specific error message you requested.
+            const errorMessage = 'Unable to Fetch jobs Reload';
+            showError(errorMessage, 'Job Fetch Error');
+        } finally {
+            setLoading(false);
+        }
+    };
+    fetchJobs();
+}, [showError]);
 
     useEffect(() => {
         if (!allJobs.length) return;
@@ -377,10 +377,15 @@ const JobSearchPage = () => {
         <ThemeProvider theme={muiTheme}>
             <CssBaseline />
             <Box sx={{ flexGrow: 1 }}>
-                <Navbar />
+                <Navbar
+                    currentUser={currentUser}
+                    profileCompletion={profileCompletion}
+                    handleLogout={handleLogout}
+                    handleDrawerToggle={handleDrawerToggle}
+                    setShowLandingAuthPopup={setShowLandingAuthPopup}
+                />
                 <Box sx={{ py: 4 }}>
                     <Container maxWidth="xl">
-                        {/* ✅ MODIFICATION: Conditionally render skeleton for search bar */}
                         {loading ? <SearchFilterSkeleton /> : (
                             <Paper elevation={0} variant="outlined" sx={{ p: 2, mb: 4, backgroundColor: 'background.paper' }}>
                                 <Grid container spacing={2} alignItems="center">
