@@ -3,100 +3,87 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Button, Card, CardContent, Typography, Radio, RadioGroup,
-  FormControlLabel, Checkbox, LinearProgress, Divider, CircularProgress
+  FormControlLabel, LinearProgress, Divider, CircularProgress, Paper
 } from '@mui/material';
+import axios from 'axios';
 
 const TestPage = () => {
-  const [questions, setQuestions] = useState([]);
+  // State for the entire test object and questions
+  const [test, setTest] = useState(null);
+  const questions = test?.questions || [];
+
+  // State for test flow and UI
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState({});
   const [score, setScore] = useState(0);
   const [showResult, setShowResult] = useState(false);
   const [totalTime, setTotalTime] = useState(0);
   const [timer, setTimer] = useState(0);
-  const [loading, setLoading] = useState(true); // Added loading state
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
+  // Effect to fetch the assigned test for the user
   useEffect(() => {
-    const fetchQuestions = async () => {
+    const fetchAssignedTest = async () => {
       setLoading(true);
+      setError("");
+      const authToken = localStorage.getItem('authToken');
+
+      if (!authToken) {
+        setError("Authentication token not found. Please log in.");
+        setLoading(false);
+        return;
+      }
+
       try {
-        const token = localStorage.getItem('authToken');
-        const response = await fetch('http://localhost:5000/api/questions', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+        // 1. Fetch the specific test assigned to the logged-in user
+        const response = await axios.get('http://localhost:5000/api/tests', {
+          headers: { 'Authorization': `Bearer ${authToken}` }
         });
-        
-        const json = await response.json();
 
-        if (!response.ok) {
-            console.error('API Error:', json.message || 'Failed to fetch');
-            setQuestions([]);
-            setLoading(false);
-            return;
+        if (response.data.success && response.data.test) {
+          const fetchedTest = response.data.test;
+          setTest(fetchedTest);
+          
+          // Calculate total time from the questions in the fetched test
+          const totalDuration = fetchedTest.questions.reduce((sum, q) => {
+            return sum + (Number(q.duration) || 60); // Default to 60s
+          }, 0);
+
+          setTotalTime(totalDuration);
+          setTimer(totalDuration);
+        } else {
+          // Handle cases where a test might not be assigned
+          throw new Error(response.data.message || "No active test assigned to you.");
         }
-        
-        let fetchedQuestions = [];
-        if (Array.isArray(json)) {
-            fetchedQuestions = json;
-        } else if (Array.isArray(json.data)) {
-            fetchedQuestions = json.data;
-        } else if (Array.isArray(json.questions)) {
-            fetchedQuestions = json.questions;
-        }
-
-        setQuestions(fetchedQuestions);
-
-        const totalDuration = fetchedQuestions.reduce((sum, q) => {
-          const duration = Number(q.duration) || 60;
-          return sum + duration;
-        }, 0);
-
-        const finalDuration = totalDuration > 0 ? totalDuration : 60;
-        setTotalTime(finalDuration);
-        setTimer(finalDuration);
-
-      } catch (error) {
-        console.error('Failed to fetch questions:', error);
-        setQuestions([]); // Ensure questions are empty on error
+      } catch (err) {
+        const errorMessage = err.response?.data?.message || err.message || "An error occurred.";
+        setError(errorMessage);
+        setTest(null);
       } finally {
-        setLoading(false); // Stop loading in all cases
+        setLoading(false);
       }
     };
 
-    fetchQuestions();
+    fetchAssignedTest();
   }, []);
 
+  // Effect to manage the countdown timer
   useEffect(() => {
     if (timer > 0 && !showResult) {
       const interval = setInterval(() => setTimer(prev => prev - 1), 1000);
       return () => clearInterval(interval);
-    } else if (timer <= 0 && !showResult && questions.length > 0) {
+    } else if (timer <= 0 && !showResult && test) {
+      // Automatically submit if the timer runs out
       submitTest();
     }
-  }, [timer, showResult, questions]);
+  }, [timer, showResult, test]);
 
   const handleAnswerChange = (optionText) => {
     setUserAnswers(prev => ({
       ...prev,
-      [questions[currentIndex]?.title]: optionText
-    }));
-  };
-
-  const handleMultipleAnswerChange = (optionText) => {
-    const currentQuestion = questions[currentIndex];
-    if (!currentQuestion) return;
-
-    const key = currentQuestion.title;
-    const previousAnswers = userAnswers[key] || [];
-
-    const updatedAnswers = previousAnswers.includes(optionText)
-      ? previousAnswers.filter(ans => ans !== optionText)
-      : [...previousAnswers, optionText];
-
-    setUserAnswers(prev => ({
-      ...prev,
-      [key]: updatedAnswers
+      [questions[currentIndex]?._id]: optionText
     }));
   };
 
@@ -107,90 +94,72 @@ const TestPage = () => {
       submitTest();
     }
   };
-
-  const submitTest = () => {
+  
+  // 2. Submit the completed test results to the backend
+  const submitTest = async () => {
+    if (submitting) return; // Prevent double submission
+    setSubmitting(true);
+    
     let calculatedScore = 0;
-
     questions.forEach((question) => {
-      const correctAnswers = question.options
-        ?.filter(opt => opt.isCorrect)
-        ?.map(opt => opt.text) || [];
-      const userAnswer = userAnswers[question.title];
-
-      const isCorrect = question.allowMultipleCorrect
-        ? Array.isArray(userAnswer)
-          && userAnswer.length === correctAnswers.length
-          && userAnswer.every(ans => correctAnswers.includes(ans))
-        : userAnswer === correctAnswers[0];
-
-      if (isCorrect) calculatedScore += 1;
+      if (userAnswers[question._id] === question.options[question.correctOption]) {
+        calculatedScore++;
+      }
     });
 
-    setScore(calculatedScore);
-    setShowResult(true);
+    setScore(calculatedScore); // Set score for immediate UI update
+
+    const authToken = localStorage.getItem('authToken');
+    try {
+      await axios.post('http://localhost:5000/api/tests/submit', 
+        {
+          testId: test._id,
+          answers: userAnswers,
+          score: calculatedScore,
+          timeTaken: totalTime - timer,
+        },
+        { headers: { 'Authorization': `Bearer ${authToken}` } }
+      );
+    } catch (err) {
+      // Log error but show results anyway as the test is complete on the client-side
+      console.error("Failed to submit test results:", err);
+    } finally {
+      setShowResult(true);
+      setSubmitting(false);
+    }
   };
 
-  // If no questions found
-  // Show a loading indicator while fetching
+  // --- Render Logic ---
+
   if (loading) {
-      return (
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
-              <CircularProgress />
-              <Typography sx={{ ml: 2 }}>Loading Questions...</Typography>
-          </Box>
-      );
-  }
-  if (questions.length === 0) {
     return (
-      <Typography sx={{ m: 4, textAlign: 'center' }} variant="h6">
-        No Questions Found.
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
+        <CircularProgress />
+        <Typography sx={{ ml: 2 }}>Loading Your Test...</Typography>
+      </Box>
     );
   }
 
-  // Show result screen
+  if (error) {
+    return (
+      <Typography sx={{ m: 4, textAlign: 'center', color: 'error.main' }} variant="h6">
+        {error}
+      </Typography>
+    );
+  }
+  
   if (showResult) {
     return (
       <Box sx={{ maxWidth: 600, mx: 'auto', mt: 8, textAlign: 'center' }}>
-        <Box sx={{
-          p: 4,
-          boxShadow: 3,
-          borderRadius: 2,
-          bgcolor: '#f5f5f5',
-        }}>
-          <Typography variant="h4" gutterBottom sx={{ color: 'primary.main' }}>
-            Test Completed!
-          </Typography>
-          <Typography variant="h5" sx={{ mb: 3 }}>
+        <Paper elevation={4} sx={{ p: 4, borderRadius: 2 }}>
+          <Typography variant="h4" gutterBottom color="primary.main">Test Completed!</Typography>
+          <Typography variant="h6" sx={{ mb: 1 }}>Role: {test?.role}</Typography>
+          <Typography variant="h5" sx={{ mb: 2 }}>
             Your Score: {score} / {questions.length}
           </Typography>
-          <Typography variant="body1" sx={{ mb: 2 }}>
-            {score === questions.length && 'Perfect score! 🎉'}
-            {score >= questions.length * 0.7 && 'Well done!'}
-            {score < questions.length * 0.7 && 'Keep practicing!'}
-          </Typography>
-          <Button
-            variant="contained"
-            fullWidth
-            sx={{
-              bgcolor: '#003366', color: '#fff', mt: 3, fontWeight: 'bold',
-              '&:hover': { bgcolor: '#002244' },
-            }}
-            href="/"
-          >
-            Go to Home
-          </Button>
-        </Box>
-        <Typography variant="h4" gutterBottom>Test Completed!</Typography>
-        <Typography variant="h6">Your Score: {score} / {questions.length}</Typography>
-        <Button 
-                          variant="contained" 
-                          size="large"
-                          sx={{ mt: 2 }}
-                          href='/user/ResumeBuilder'
-                        >
-                          Build your AI Resume
-                        </Button>
+          <LinearProgress variant="determinate" value={(score / questions.length) * 100} sx={{ height: 10, borderRadius: 5, mb: 3 }} />
+          <Button variant="contained" href="/" size="large">Go to Home</Button>
+        </Paper>
       </Box>
     );
   }
@@ -198,94 +167,36 @@ const TestPage = () => {
   const currentQuestion = questions[currentIndex];
 
   return (
-    <Box sx={{ maxWidth: 600, mx: 'auto', p: 2 }}>
-      {/* Timer & Progress */}
-      <Box sx={{ mb: 2 }}>
-        <Typography
-          variant="body1"
-          fontWeight="bold"
-          textAlign="center"
-          color={timer <= 10 ? 'error' : 'text.primary'}
-        >
-          Time Remaining: {timer} sec
+    <Box sx={{ maxWidth: 800, mx: 'auto', p: { xs: 2, md: 4 } }}>
+      <Box sx={{ mb: 2, textAlign: 'center' }}>
+        <Typography variant="h6" color={timer <= 10 ? 'error' : 'text.primary'}>
+          Time Remaining: {Math.floor(timer / 60)}:{(timer % 60).toString().padStart(2, '0')}
         </Typography>
-        <LinearProgress
-          variant="determinate"
-          value={((totalTime - timer) / totalTime) * 100}
-          sx={{ height: 10, borderRadius: 5, mt: 1 }}
-        />
+        <LinearProgress variant="determinate" value={((totalTime - timer) / totalTime) * 100} sx={{ height: 8, borderRadius: 4, mt: 1 }} />
       </Box>
 
-      {/* Question Card */}
       <Card sx={{ borderRadius: 3, boxShadow: 3 }}>
-        <CardContent>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            {currentQuestion.question}
-          </Typography>
+        <CardContent sx={{ p: { xs: 2, md: 4 } }}>
+          <Typography variant="body2" color="text.secondary">Question {currentIndex + 1} of {questions.length}</Typography>
+          <Typography variant="h6" sx={{ my: 2 }}>{currentQuestion.question}</Typography>
           <Divider sx={{ mb: 2 }} />
 
-          {/* Options */}
-          {currentQuestion.allowMultipleCorrect ? (
-            currentQuestion.options.map((option, idx) => (
-              <FormControlLabel
-                key={idx}
-                control={
-                  <Checkbox
-                    checked={(userAnswers[currentQuestion.title] || []).includes(option.text)}
-                    onChange={() => handleMultipleAnswerChange(option.text)}
-                  />
-                }
-                label={option.text}
-                sx={{ display: 'block', mb: 1 }}
-              />
-            ))
-          ) : (
-            <RadioGroup
-              value={userAnswers[currentQuestion.title] || ''}
-              onChange={(e) => handleAnswerChange(e.target.value)}
-            >
-              {currentQuestion.options.map((option, idx) => (
-                <FormControlLabel
-                  key={idx}
-                  value={option.text}
-                  control={<Radio />}
-                  label={option.text}
-                  sx={{ display: 'block', mb: 1 }}
-                />
-              ))}
-            </RadioGroup>
-          )}
+          <RadioGroup value={userAnswers[currentQuestion._id] || ''} onChange={(e) => handleAnswerChange(e.target.value)}>
+            {currentQuestion.options.map((option, idx) => (
+              <FormControlLabel key={idx} value={option} control={<Radio />} label={option} sx={{ display: 'block', mb: 1 }} />
+            ))}
+          </RadioGroup>
 
-          <Divider sx={{ my: 2 }} />
-
-          {/* Next/Submit Button */}
-          <Button
-            variant="contained"
-            onClick={handleNext}
-            sx={{
-              float: 'right',
-              bgcolor: '#1a73e8',
-              textTransform: 'none',
-              '&:hover': { bgcolor: '#1558b0' }
-            }}
-            disabled={
-              currentQuestion.allowMultipleCorrect
-                ? (userAnswers[currentQuestion.title] || []).length === 0
-                : !userAnswers[currentQuestion.title]
-            }
-          >
-            {currentIndex + 1 === questions.length ? 'Submit' : 'Next'}
-          </Button>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
+            <Button variant="contained" onClick={handleNext} disabled={!userAnswers[currentQuestion._id] || submitting}>
+              {submitting && currentIndex + 1 === questions.length 
+                ? <CircularProgress size={24} color="inherit" />
+                : (currentIndex + 1 === questions.length ? 'Submit Test' : 'Next')
+              }
+            </Button>
+          </Box>
         </CardContent>
       </Card>
-
-      {/* Footer */}
-      <Typography
-        variant="body2"
-        sx={{ mt: 2, textAlign: 'center', color: 'text.secondary' }}
-      >
-        Question {currentIndex + 1} of {questions.length}
-      </Typography>
     </Box>
   );
 };

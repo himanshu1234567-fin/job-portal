@@ -383,5 +383,6 @@ export default function ResumeBuilder() {
         }}
       />
     </Box>
+    
   );
 }

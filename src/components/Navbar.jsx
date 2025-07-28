@@ -18,7 +18,7 @@ const navigation = [
   { name: 'Courses', href: '/user/courses' },
 ];
 
-// ✅ NEW: Skeleton component for the Navbar loading state
+// Skeleton component for the Navbar loading state
 const NavbarSkeleton = () => (
   <AppBar
     position="static"
@@ -42,6 +42,7 @@ const NavbarSkeleton = () => (
 
 
 const ProfileAvatarWithProgress = ({ user, progress }) => {
+  // This function determines the color of the progress ring based on the percentage
   const getProgressColor = (value) => {
     if (value < 25) return '#d32f2f'; // red
     if (value < 50) return '#fbc02d'; // yellow
@@ -51,11 +52,41 @@ const ProfileAvatarWithProgress = ({ user, progress }) => {
 
   const progressColor = getProgressColor(progress);
 
+  // ✅ NEW: State to hold the random avatar color.
+  // The function runs only once on mount to generate a color.
+  const [avatarColor] = useState(() => {
+    const initialProgressColor = getProgressColor(progress);
+
+    const generateRandomColor = () => {
+      const letters = '0123456789ABCDEF';
+      let color = '#';
+      for (let i = 0; i < 6; i++) {
+        color += letters[Math.floor(Math.random() * 16)];
+      }
+      return color;
+    };
+
+    let newColor;
+    // ✅ NEW LOGIC: Loop to ensure the avatar color is never the same as the progress color.
+    do {
+      newColor = generateRandomColor();
+    } while (newColor.toLowerCase() === initialProgressColor.toLowerCase());
+
+    return newColor;
+  });
+
   return (
     <Box sx={{ position: 'relative', display: 'inline-flex', '&:hover .progress-percent': { opacity: 1 } }}>
       <Avatar
         alt={user.fullName}
-        sx={{ width: 36, height: 36, bgcolor: 'primary.main', fontSize: '0.875rem', boxShadow: 2 }}
+        sx={{
+          width: 36,
+          height: 36,
+          // Use the guaranteed unique random color from state
+          bgcolor: avatarColor,
+          fontSize: '0.875rem',
+          boxShadow: 2
+        }}
       >
         {user.fullName?.[0]}
       </Avatar>
@@ -144,7 +175,7 @@ const Navbar = ({ currentUser, handleLogout, handleLoginSuccess, setShowLandingA
   const handleLogoutClick = async () => {
     setIsLoggingOut(true);
     try {
-      const response = await fetch('http://localhost:5000/api/admin-dashboard/logout', {
+      const response = await fetch('http://localhost:5000/api/auth/logout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -3,23 +3,13 @@
 import React from 'react';
 import axios from 'axios';
 import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  Grid,
-  Typography,
-  Box,
-  Button,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  IconButton,
+  Dialog, DialogContent, DialogTitle, Grid, Typography, Box, Button,
+  List, ListItem, ListItemIcon, ListItemText, IconButton,
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import CloseIcon from '@mui/icons-material/Close';
-import { useError } from '../context/ErrorContext'; // ✅ 1. Import the useError hook
+import { useError } from '../context/ErrorContext';
 
 // This function can be placed outside the component or in a utils file
 const loadRazorpayScript = (src) => {
@@ -32,41 +22,41 @@ const loadRazorpayScript = (src) => {
   });
 };
 
+// ✨ SUGGESTION: For a better UX, create a success context similar to your ErrorContext.
+// This is a placeholder to show how it could be used.
+const useSuccess = () => ({
+    showSuccess: (message, title) => {
+        // In a real app, this would trigger a snackbar or toast notification.
+        alert(`${title ? title + ': ' : ''}${message}`);
+    }
+});
+
 const plans = [
-  {
-    title: 'ESSENTIAL',
-    price: '₹499',
-    priceNum: 499,
-    color: ['#00c6ff', '#0072ff'],
-    features: [true, true, false, false, true, false],
-  },
-  {
-    title: 'PROFESSIONAL',
-    price: '₹899',
-    priceNum: 899,
-    color: ['#a044ff', '#6a3093'],
-    features: [true, true, true, true, true, false],
-  },
-  {
-    title: 'EXECUTIVE',
-    price: '₹1499',
-    priceNum: 1499,
-    color: ['#ff4e50', '#f9d423'],
-    features: [true, true, true, true, true, true],
-  },
+    // ... (plans array remains the same)
+    {
+        title: 'ESSENTIAL', price: '₹499', priceNum: 499, color: ['#00c6ff', '#0072ff'],
+        features: [true, true, false, false, true, false],
+    },
+    {
+        title: 'PROFESSIONAL', price: '₹899', priceNum: 899, color: ['#a044ff', '#6a3093'],
+        features: [true, true, true, true, true, false],
+    },
+    {
+        title: 'EXECUTIVE', price: '₹1499', priceNum: 1499, color: ['#ff4e50', '#f9d423'],
+        features: [true, true, true, true, true, true],
+    },
 ];
 
 const featureLabels = [
-  'Multiple Resume Templates',
-  'PDF Download',
-  'ATS-Friendly Formatting',
-  'Cover Letter Builder',
-  'Unlimited Edits',
-  'Priority Customer Support',
+    // ... (featureLabels array remains the same)
+    'Multiple Resume Templates', 'PDF Download', 'ATS-Friendly Formatting',
+    'Cover Letter Builder', 'Unlimited Edits', 'Priority Customer Support',
 ];
 
 const PricingPopup = ({ open, handleClose }) => {
-  const { showError } = useError(); // ✅ 2. Instantiate the hook
+  const { showError } = useError();
+  // ✨ SUGGESTION: Instantiate your success hook
+  const { showSuccess } = useSuccess();
 
   const handlePayment = async (plan) => {
     const amount = plan.priceNum;
@@ -77,7 +67,6 @@ const PricingPopup = ({ open, handleClose }) => {
 
     const sdkReady = await loadRazorpayScript('https://checkout.razorpay.com/v1/checkout.js');
     if (!sdkReady) {
-      // ✅ 3. Replace alert with showError for a consistent UX
       showError('Failed to load payment gateway. Please check your internet connection and try again.', 'Network Error');
       return;
     }
@@ -85,7 +74,7 @@ const PricingPopup = ({ open, handleClose }) => {
     try {
       // Create the order on your server
       const { data: order } = await axios.post(
-        'http://localhost:5000/api/admin-dashboard/make-payment',
+        'http://localhost:5000/api/auth/make-payment',
         { amount: amount, currency: 'INR', receipt: `receipt_${Date.now()}` },
         {
           headers: {
@@ -100,7 +89,7 @@ const PricingPopup = ({ open, handleClose }) => {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_PBUluwX3e15zwd',
         amount: order.amount,
         currency: order.currency,
-        name: 'Your Company Name', // Replace with your company name
+        name: 'Your Company Name',
         description: `${plan.title} Plan Payment`,
         order_id: order.id,
         prefill: {
@@ -117,9 +106,9 @@ const PricingPopup = ({ open, handleClose }) => {
         // Handler function called on successful payment
         handler: async (response) => {
           try {
-            // Send only the fields required by the verifyPayment controller.
+            // Send the required fields to your verify-payment controller
             const { data: verifyRes } = await axios.post(
-              'http://localhost:5000/api/admin-dashboard/verify-payment',
+              'http://localhost:5000/api/auth/verify-payment',
               {
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
@@ -131,14 +120,14 @@ const PricingPopup = ({ open, handleClose }) => {
                 },
               }
             );
-            console.log('Payment verification success');
             console.log('Payment verification response:', verifyRes);
-            alert(verifyRes.message || 'Payment verified successfully!');
+            // ✅ UPDATED: Use the success handler for a better UX
+            showSuccess(verifyRes.message || 'Payment verified successfully!', 'Payment Complete');
             handleClose(); // Close the popup on success
           } catch (error) {
             console.error('Error verifying payment:', error);
-            // ✅ 4. Replace alert with showError in the verification catch block
-            const errorMessage = error.response?.data?.message || 'Payment verification failed. Please contact support.';
+            // ✅ UPDATED: Correctly parse the error message from your verification controller
+            const errorMessage = error.response?.data?.error || 'Payment verification failed. Please contact support.';
             showError(errorMessage, 'Verification Failed');
           }
         },
@@ -150,8 +139,9 @@ const PricingPopup = ({ open, handleClose }) => {
 
     } catch (error) {
       console.error('Payment Error:', error);
-      // ✅ 5. Replace alert with showError in the main payment catch block
-      const errorMessage = error.response?.data?.message || 'Could not initiate payment. Please try again later.';
+      // ✅ UPDATED: Correctly parse the detailed error from your make-payment controller
+      const errData = error.response?.data;
+      const errorMessage = errData?.description || errData?.error || 'Could not initiate payment. Please try again later.';
       showError(errorMessage, 'Payment Error');
     }
   };
@@ -167,6 +157,7 @@ const PricingPopup = ({ open, handleClose }) => {
         </IconButton>
       </DialogTitle>
       <DialogContent>
+        {/* The JSX for plans and features remains the same */}
         <Grid container spacing={2} justifyContent="center">
           {plans.map((plan, index) => (
             <Grid item xs={12} sm={6} md={4} key={index}>
