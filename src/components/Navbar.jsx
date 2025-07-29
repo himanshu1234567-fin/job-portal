@@ -7,7 +7,7 @@ import {
   ListItemText, Divider, Skeleton
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation'; // ✅ IMPORT useRouter
 import { motion } from 'framer-motion';
 import axios from 'axios';
 
@@ -42,21 +42,17 @@ const NavbarSkeleton = () => (
 
 
 const ProfileAvatarWithProgress = ({ user, progress }) => {
-  // This function determines the color of the progress ring based on the percentage
   const getProgressColor = (value) => {
-    if (value < 25) return '#d32f2f'; // red
-    if (value < 50) return '#fbc02d'; // yellow
-    if (value < 75) return '#808000'; // olive
-    return '#2e7d32'; // green
+    if (value < 25) return '#d32f2f';
+    if (value < 50) return '#fbc02d';
+    if (value < 75) return '#808000';
+    return '#2e7d32';
   };
 
   const progressColor = getProgressColor(progress);
 
-  // ✅ NEW: State to hold the random avatar color.
-  // The function runs only once on mount to generate a color.
   const [avatarColor] = useState(() => {
     const initialProgressColor = getProgressColor(progress);
-
     const generateRandomColor = () => {
       const letters = '0123456789ABCDEF';
       let color = '#';
@@ -65,13 +61,10 @@ const ProfileAvatarWithProgress = ({ user, progress }) => {
       }
       return color;
     };
-
     let newColor;
-    // ✅ NEW LOGIC: Loop to ensure the avatar color is never the same as the progress color.
     do {
       newColor = generateRandomColor();
     } while (newColor.toLowerCase() === initialProgressColor.toLowerCase());
-
     return newColor;
   });
 
@@ -82,7 +75,6 @@ const ProfileAvatarWithProgress = ({ user, progress }) => {
         sx={{
           width: 36,
           height: 36,
-          // Use the guaranteed unique random color from state
           bgcolor: avatarColor,
           fontSize: '0.875rem',
           boxShadow: 2
@@ -131,14 +123,34 @@ const Navbar = ({ currentUser, handleLogout, handleLoginSuccess, setShowLandingA
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const pathname = usePathname();
+  const router = useRouter(); // ✅ INITIALIZE ROUTER
 
   useEffect(() => {
     setAuthLoading(false);
   }, []);
 
+  // ✅ MODIFICATION: This effect checks for navigation attempts while logged out.
+  useEffect(() => {
+    // If the user is not logged in and not on the home page, show the login popup.
+    // This prevents direct URL access to protected pages.
+    if (!currentUser && pathname !== '/') {
+        setShowLandingAuthPopup(true);
+    }
+  }, [pathname, currentUser, setShowLandingAuthPopup]);
+
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
+  };
+  
+  // ✅ MODIFICATION: This function handles navigation clicks.
+  const handleNavClick = (e, href) => {
+    e.preventDefault(); // Prevent default link behavior
+    if (currentUser) {
+      router.push(href); // If logged in, navigate
+    } else {
+      setShowLandingAuthPopup(true); // If logged out, show popup
+    }
   };
 
   const handleLoginClick = async (credentials) => {
@@ -146,9 +158,7 @@ const Navbar = ({ currentUser, handleLogout, handleLoginSuccess, setShowLandingA
     try {
       const response = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(credentials),
       });
 
@@ -194,6 +204,7 @@ const Navbar = ({ currentUser, handleLogout, handleLoginSuccess, setShowLandingA
       }
       
       handleLogout();
+      router.push('/'); // Redirect to home on logout
 
     } catch (error) {
       console.error('Error logging out:', error.message);
@@ -214,7 +225,7 @@ const Navbar = ({ currentUser, handleLogout, handleLoginSuccess, setShowLandingA
         const token = localStorage.getItem('authToken');
         if (!token) return;
 
-        const response = await axios.get("http://localhost:5000/api/candidates/me", {
+        const response = await axios.get("http://localhost:5000/api/candidates/getmyprofileId", {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -237,7 +248,8 @@ const Navbar = ({ currentUser, handleLogout, handleLoginSuccess, setShowLandingA
       <List>
         {navigation.map((item) => (
           <ListItem key={item.name} disablePadding>
-            <ListItemButton component="a" href={item.href}>
+            {/* ✅ MODIFICATION: Use onClick handler for navigation */}
+            <ListItemButton onClick={(e) => handleNavClick(e, item.href)}>
               <ListItemText primary={item.name} />
             </ListItemButton>
           </ListItem>
@@ -247,7 +259,7 @@ const Navbar = ({ currentUser, handleLogout, handleLoginSuccess, setShowLandingA
       {currentUser ? (
         <List>
           <ListItem disablePadding>
-            <ListItemButton component="a" href="/user/profile">
+            <ListItemButton onClick={(e) => handleNavClick(e, '/user/profile')}>
               <ListItemText primary={`Profile (${profileCompletePercent}%)`} />
             </ListItemButton>
           </ListItem>
@@ -297,7 +309,8 @@ const Navbar = ({ currentUser, handleLogout, handleLoginSuccess, setShowLandingA
               return (
                 <Box key={item.name} sx={{ position: 'relative' }}>
                   <Button
-                    href={item.href}
+                    // ✅ MODIFICATION: Use onClick handler instead of href
+                    onClick={(e) => handleNavClick(e, item.href)}
                     sx={{
                       textTransform: 'none', fontWeight: 500, borderRadius: 2, px: 2, py: 1,
                       color: isActive ? 'primary.main' : 'text.primary',
@@ -330,7 +343,7 @@ const Navbar = ({ currentUser, handleLogout, handleLoginSuccess, setShowLandingA
                   arrow
                   placement="bottom"
                 >
-                  <a href="/user/profile" style={{ textDecoration: 'none' }}>
+                  <a href="/user/profile" onClick={(e) => handleNavClick(e, '/user/profile')} style={{ textDecoration: 'none' }}>
                     <ProfileAvatarWithProgress user={currentUser} progress={profileCompletePercent} />
                   </a>
                 </Tooltip>
