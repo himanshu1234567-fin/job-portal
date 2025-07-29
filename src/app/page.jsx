@@ -138,7 +138,7 @@ export default function ResumeBuilder() {
       }
       setLoadingProfile(true);
       try {
-        const response = await axios.get('http://localhost:5000/api/candidates/me', {
+        const response = await axios.get('http://localhost:5000/api/candidates/getmyprofileId', {
           headers: { Authorization: `Bearer ${token}` }
         });
         const data = response.data;
