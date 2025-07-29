@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react'
+import React, { useEffect, useState } from 'react';
 import {
   Typography,
   Paper,
@@ -14,12 +14,43 @@ import {
   CircularProgress,
   Grid,
   Button,
-}from '@mui/material';
+} from '@mui/material';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import axios from 'axios';
-import { useEffect, useState } from 'react';
-import UserDetailsModal from '../dashboard/userDetailsPopup/page'
-import Link from 'next/link';
+import UserDetailsModal from '../dashboard/userDetailsPopup/page';
+
+// --- Helper function for nested value access ---
+const getValue = (user, key) => {
+  if (!user) return '--';
+  switch (key) {
+    case 'name':
+      return user.candidateId?.fullName || user.userId?.fullName || '--';
+    case 'email':
+      return user.candidateId?.email || user.userId?.email || '--';
+    case 'position':
+  // Print all items from desirableJob (array) as comma-separated values
+  if (Array.isArray(user.candidateId?.desirableJob) && user.candidateId.desirableJob.length > 0) {
+    return user.candidateId.desirableJob.join(', ');
+  } else if (Array.isArray(user.desirableJob) && user.desirableJob.length > 0) {
+    return user.desirableJob.join(', ');
+  } else {
+    return '--';
+  }
+
+    case 'status':
+      return user.status ?? '--';
+    case 'testScore':
+      return user.testScore?.points ?? '--';
+    case 'resumeStatus':
+      return user.resumeStatus ?? '--';
+    case 'paymentStatus':
+      return user.paymentStatus ?? '--';
+    case 'hired':
+      return user.hired ?? '--';
+    default:
+      return '--';
+  }
+};
 
 export default function AdminDashboard() {
   const [users, setUsers] = useState([]);
@@ -32,7 +63,7 @@ export default function AdminDashboard() {
       try {
         const token = localStorage.getItem('authToken');
         const response = await axios.get(
-          'http://localhost:5000/api/admin-dashboard',
+          'http://localhost:5000/api/getAllUsers',
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setUsers(response.data.dashboards || []);
@@ -42,15 +73,8 @@ export default function AdminDashboard() {
         setLoading(false);
       }
     };
-
     fetchUsers();
   }, []);
-
-  const getValue = (value) => {
-    if (value == null) return '--';
-    if (typeof value === 'object') return value.name ?? JSON.stringify(value);
-    return value;
-  };
 
   const handleViewUser = (user) => {
     setSelectedUser(user);
@@ -74,16 +98,14 @@ export default function AdminDashboard() {
             <Typography variant='h4' fontWeight={700}>Admin Dashboard</Typography>
             <Typography variant='subtitle1' color='text.secondary'>Candidate Management</Typography>
           </Grid>
-           <Grid item>
-        <Button variant="contained" href="/admin/TestPage" passHref>
-          <SmartToyIcon /> Assign test
-        </Button>
-      
-        <Button variant="contained" href="/admin/test" passHref style={{ marginLeft: '16px' }}>
-          <SmartToyIcon />  Create test with AI
-        </Button>
-      
-    </Grid>
+          <Grid item>
+            <Button variant="contained" href="/admin/TestPage">
+              <SmartToyIcon /> Assign test
+            </Button>
+            <Button variant="contained" href="/admin/test" style={{ marginLeft: '16px' }}>
+              <SmartToyIcon />  Create test with AI
+            </Button>
+          </Grid>
         </Grid>
       </Paper>
 
@@ -91,10 +113,10 @@ export default function AdminDashboard() {
       <Grid container spacing={3} sx={{ mb: 4 }}>
         {[
           { label: 'Total Users', value: users.length, icon: '👤' },
-          { label: 'Resume Uploaded', value: users.filter(u => getValue(u.resumeStatus) === 'Uploaded').length, icon: '📄' },
-          { label: 'Payments Completed', value: users.filter(u => getValue(u.paymentStatus) === 'Paid').length, icon: '💰' },
-          { label: 'Pending Payments', value: users.filter(u => getValue(u.paymentStatus) === 'Pending').length, icon: '⏳' },
-          { label: 'Hired Candidates', value: users.filter(u => getValue(u.hired) === 'Yes').length, icon: '✅' }
+          { label: 'Resume Uploaded', value: users.filter(u => getValue(u, 'resumeStatus') === 'Uploaded').length, icon: '📄' },
+          { label: 'Payments Completed', value: users.filter(u => getValue(u, 'paymentStatus') === 'Paid').length, icon: '💰' },
+          { label: 'Pending Payments', value: users.filter(u => getValue(u, 'paymentStatus') === 'Pending').length, icon: '⏳' },
+          { label: 'Hired Candidates', value: users.filter(u => getValue(u, 'hired') === 'Yes').length, icon: '✅' }
         ].map((stat, idx) => (
           <Grid item xs={12} sm={6} md={3} key={idx}>
             <Paper elevation={2} sx={{ p: 3, textAlign: 'center', borderRadius: 3 }}>
@@ -127,15 +149,15 @@ export default function AdminDashboard() {
                   key={user._id}
                   sx={{ backgroundColor: users.indexOf(user) % 2 === 0 ? '#ffffff' : '#f9fafb', '&:hover': { backgroundColor: '#f3f4f6' } }}
                 >
-                  <TableCell>{getValue(user.name)}</TableCell>
-                  <TableCell>{getValue(user.email)}</TableCell>
-                  <TableCell>{getValue(user.desirableJob?.desirableJob)}</TableCell>
+                  <TableCell>{getValue(user, 'name')}</TableCell>
+                  <TableCell>{getValue(user, 'email')}</TableCell>
+                  <TableCell>{getValue(user, 'position')}</TableCell>
                   <TableCell>
-                    <Typography sx={{ color: getValue(user.status) === 'Active' ? 'green' : 'red', fontWeight: 500 }}>
-                      {getValue(user.status)}
+                    <Typography sx={{ color: getValue(user, 'status') === 'Active' ? 'green' : 'red', fontWeight: 500 }}>
+                      {getValue(user, 'status')}
                     </Typography>
                   </TableCell>
-                  <TableCell>{getValue(user.testScore?.points)}</TableCell>
+                  <TableCell>{getValue(user, 'testScore')}</TableCell>
                   <TableCell align='right'>
                     <Button
                       variant='outlined'
@@ -171,11 +193,13 @@ export default function AdminDashboard() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {[...new Set(users.filter(u => getValue(u.status) === 'Active').map(u => getValue(u.desirableJob?.desirableJob)))]
+              {[...new Set(users.filter(u => getValue(u, 'status') === 'Active').map(u => getValue(u, 'position')))]
                 .map((job, idx) => (
                   <TableRow key={idx}>
                     <TableCell>{job}</TableCell>
-                    <TableCell>{users.filter(u => getValue(u.status) === 'Active' && getValue(u.desirableJob?.desirableJob) === job).length}</TableCell>
+                    <TableCell>
+                      {users.filter(u => getValue(u, 'status') === 'Active' && getValue(u, 'position') === job).length}
+                    </TableCell>
                   </TableRow>
                 ))}
             </TableBody>
@@ -184,4 +208,4 @@ export default function AdminDashboard() {
       </Paper>
     </div>
   );
-} 
+}

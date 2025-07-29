@@ -79,6 +79,7 @@ export default function ResumeBuilderPage() {
   const [customSkill, setCustomSkill] = useState('');
   const [resumeFile, setResumeFile] = useState(null);
   const [noResume, setNoResume] = useState(false);
+  const [profileImage, setProfileImage] = useState(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -123,32 +124,32 @@ export default function ResumeBuilderPage() {
         setWorkExperience(
           Array.isArray(data.experience) && data.experience.length > 0
             ? data.experience.map((exp) => ({
-                company: exp.company || '',
-                role: exp.role || '',
-                startDate: exp.startDate || '',
-                endDate: exp.endDate || '',
-              }))
+              company: exp.company || '',
+              role: exp.role || '',
+              startDate: exp.startDate || '',
+              endDate: exp.endDate || '',
+            }))
             : []
         );
         setInternships(
           Array.isArray(data.internships) && data.internships.length > 0
             ? data.internships.map((intern) => ({
-                company: intern.company || '',
-                role: intern.role || '',
-                startDate: intern.startDate || '',
-                endDate: intern.endDate || '',
-                description: intern.description || '',
-              }))
+              company: intern.company || '',
+              role: intern.role || '',
+              startDate: intern.startDate || '',
+              endDate: intern.endDate || '',
+              description: intern.description || '',
+            }))
             : []
         );
         setProjects(
           Array.isArray(data.projects) && data.projects.length > 0
             ? data.projects.map((proj) => ({
-                title: proj.title || '',
-                description: proj.description || '',
-                techStack: proj.techStack || '',
-                link: proj.link || '',
-              }))
+              title: proj.title || '',
+              description: proj.description || '',
+              techStack: proj.techStack || '',
+              link: proj.link || '',
+            }))
             : []
         );
         setIsFresher(data.experience?.length === 0);
@@ -159,8 +160,7 @@ export default function ResumeBuilderPage() {
         console.error('Error fetching profile:', error);
         if (error.response) {
           setError(
-            `Failed to load profile data: ${error.response.status} ${error.response.statusText}${
-              error.response.data?.message ? ` - ${error.response.data.message}` : ''
+            `Failed to load profile data: ${error.response.status} ${error.response.statusText}${error.response.data?.message ? ` - ${error.response.data.message}` : ''
             }`
           );
         } else if (error.request) {
@@ -371,6 +371,55 @@ export default function ResumeBuilderPage() {
               Your Contact Information
             </Typography>
             <Grid container spacing={2}>
+              {/* Profile Image Upload */}
+              <Grid item xs={12}>
+                <Box
+                  sx={{
+                    p: 2,
+                    border: '2px dashed #1976d2',
+                    borderRadius: 2,
+                    textAlign: 'center',
+                    backgroundColor: '#f5f5f5',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    '&:hover': { backgroundColor: '#e3f2fd' },
+                  }}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (e.dataTransfer.files.length > 0) {
+                      setProfileImage(e.dataTransfer.files[0]);
+                    }
+                  }}
+                >
+                  <Typography variant='subtitle1' sx={{ mb: 1, color: '#1976d2' }}>
+                    {profileImage ? 'Profile Image Selected' : 'Upload Profile Image (optional)'}
+                  </Typography>
+                  {profileImage && (
+                    <Typography variant='caption' sx={{ mb: 1, color: '#666' }}>
+                      {profileImage.name}
+                    </Typography>
+                  )}
+                  <Button
+                    variant='contained'
+                    component='label'
+                    sx={{ mb: 2, fontSize: '0.8rem', py: 0.5, px: 2 }}
+                  >
+                    Select Image
+                    <input
+                      type='file'
+                      hidden
+                      accept='image/*'
+                      onChange={(e) => setProfileImage(e.target.files[0])}
+                    />
+                  </Button>
+                  <Typography variant='caption' sx={{ color: '#666' }}>
+                    Recommended size: 150x150px (JPG, PNG, up to 5MB)
+                  </Typography>
+                </Box>
+              </Grid>
+              {/* Existing Contact Information Fields */}
               <Grid item xs={12} sm={6}>
                 <TextField
                   label='First Name'
@@ -899,31 +948,53 @@ export default function ResumeBuilderPage() {
     }
   };
 
-  const ModernResume = () => {
-    const isModern = selectedTemplate === 'modern';
+const ModernResume = () => {
+  const isModern = selectedTemplate === 'modern';
 
-    return (
+  return (
+    <Box
+      id='resume'
+      sx={{
+        p: isModern ? 4 : 3,
+        maxWidth: '800px',
+        margin: 'auto',
+        bgcolor: 'white',
+        boxShadow: 3,
+        border: isModern ? '1px solid #e0e0e0' : 'none',
+        fontFamily: isModern ? "'Roboto', sans-serif" : "'Times New Roman', Times, serif",
+        color: '#333',
+      }}
+    >
+      {/* Header Section with Profile Image and Contact Info */}
       <Box
-        id='resume'
         sx={{
-          p: isModern ? 4 : 3,
-          maxWidth: '800px',
-          margin: 'auto',
-          bgcolor: 'white',
-          boxShadow: 3,
-          border: isModern ? '1px solid #e0e0e0' : 'none',
-          fontFamily: isModern ? "'Roboto', sans-serif" : "'Times New Roman', Times, serif",
-          color: '#333',
+          display: 'flex',
+          flexDirection: profileImage ? 'row' : 'column',
+          alignItems: profileImage ? 'flex-start' : isModern ? 'flex-start' : 'center',
+          gap: profileImage ? 2 : 0,
+          borderBottom: isModern ? '3px solid #1976d2' : '2px solid #000',
+          pb: 2,
+          mb: 3,
+          textAlign: profileImage ? 'left' : isModern ? 'left' : 'center',
         }}
       >
-        <Box
-          sx={{
-            textAlign: isModern ? 'left' : 'center',
-            borderBottom: isModern ? '3px solid #1976d2' : '2px solid #000',
-            pb: 2,
-            mb: 3,
-          }}
-        >
+        {/* Profile Image */}
+        {profileImage && (
+          <Box
+            component='img'
+            src={typeof profileImage === 'string' ? profileImage : URL.createObjectURL(profileImage)}
+            alt='Profile'
+            sx={{
+              width: '120px',
+              height: '120px',
+              borderRadius: isModern ? '50%' : '0',
+              objectFit: 'cover',
+              border: isModern ? '2px solid #e0e0e0' : '1px solid #000',
+            }}
+          />
+        )}
+        {/* Name and Contact Info */}
+        <Box sx={{ flex: 1 }}>
           <Typography
             variant='h3'
             sx={{
@@ -938,7 +1009,7 @@ export default function ResumeBuilderPage() {
             variant='body1'
             sx={{
               fontSize: isModern ? '1rem' : '0.9rem',
-              color: isModern ? '0.555' : '#000',
+              color: isModern ? '#555' : '#000',
               mt: isModern ? 1 : 0,
             }}
           >
@@ -949,174 +1020,172 @@ export default function ResumeBuilderPage() {
             {contactInfo.country && `, ${contactInfo.country}`}
           </Typography>
         </Box>
-
-        {jobTitle && (
-          <Box sx={{ mb: 3 }}>
-            <Typography
-              variant='h5'
-              sx={{
-                fontWeight: isModern ? 'bold' : 'normal',
-                fontSize: isModern ? '1.25rem' : '1.1rem',
-                color: isModern ? '#1976d2' : '#000',
-                borderBottom: isModern ? '2px solid #e0e0e0' : '1px solid #000',
-                pb: 0.5,
-              }}
-            >
-              {isModern ? 'Career Objective' : 'Objective'}
-            </Typography>
-            <Typography sx={{ mt: 1, fontSize: '0.95rem' }}>
-              Seeking a position as a {jobTitle} to leverage my skills and experience in a dynamic environment.
-            </Typography>
-          </Box>
-        )}
-
-        {selectedSkills.length > 0 && (
-          <Box sx={{ mb: 3 }}>
-            <Typography
-              variant='h5'
-              sx={{
-                fontWeight: isModern ? 'bold' : 'normal',
-                fontSize: isModern ? '1.25rem' : '1.1rem',
-                color: isModern ? '#1976d2' : '#000',
-                borderBottom: isModern ? '2px solid #e0e0e0' : '1px solid #000',
-                pb: 0.5,
-              }}
-            >
-              Skills
-            </Typography>
-            <Box
-              sx={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: 1,
-                mt: 1,
-              }}
-            >
-              {selectedSkills.map((skill, index) => (
-                <Typography
-                  key={index}
-                  sx={{
-                    fontSize: '0.95rem',
-                    backgroundColor: isModern ? '#e3f2fd' : 'transparent',
-                    borderRadius: isModern ? '12px' : 'none',
-                    padding: isModern ? '4px 12px' : '0',
-                    display: 'inline-block',
-                  }}
-                >
-                  {skill}
-                </Typography>
-              ))}
-            </Box>
-          </Box>
-        )}
-
-        {(workExperience.length > 0 || internships.length > 0) && (
-          <Box sx={{ mb: 3 }}>
-            <Typography
-              variant='h5'
-              sx={{
-                fontWeight: isModern ? 'bold' : 'normal',
-                fontSize: isModern ? '1.25rem' : '1.1rem',
-                color: isModern ? '#1976d2' : '#000',
-                borderBottom: isModern ? '2px solid #e0e0e0' : '1px solid #000',
-                pb: 0.5,
-              }}
-            >
-              {isFresher ? 'Internships' : 'Work Experience'}
-            </Typography>
-            {isFresher
-              ? internships.map((intern, index) => (
-                  <Box key={index} sx={{ mt: 2 }}>
-                    <Typography sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
-                      {intern.role} - {intern.company}
-                    </Typography>
-                    <Typography sx={{ fontSize: '0.9rem', color: '#555' }}>
-                      {intern.startDate} - {intern.endDate}
-                    </Typography>
-                    <Typography sx={{ fontSize: '0.9rem', mt: 1 }}>
-                      {intern.description}
-                    </Typography>
-                  </Box>
-                ))
-              : workExperience.map((exp, index) => (
-                  <Box key={index} sx={{ mt: 2 }}>
-                    <Typography sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
-                      {exp.role} - {exp.company}
-                    </Typography>
-                    <Typography sx={{ fontSize: '0.9rem', color: '#555' }}>
-                      {exp.startDate} - {exp.endDate}
-                    </Typography>
-                  </Box>
-                ))}
-          </Box>
-        )}
-
-        {projects.length > 0 && (
-          <Box sx={{ mb: 3 }}>
-            <Typography
-              variant='h5'
-              sx={{
-                fontWeight: isModern ? 'bold' : 'normal',
-                fontSize: isModern ? '1.25rem' : '1.1rem',
-                color: isModern ? '#1976d2' : '#000',
-                borderBottom: isModern ? '2px solid #e0e0e0' : '1px solid #000',
-                pb: 0.5,
-              }}
-            >
-              Projects
-            </Typography>
-            {projects.map((project, index) => (
-              <Box key={index} sx={{ mt: 2 }}>
-                <Typography sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
-                  {project.title}
-                </Typography>
-                <Typography sx={{ fontSize: '0.9rem', color: '#555' }}>
-                  Tech Stack: {project.techStack}
-                </Typography>
-                <Typography sx={{ fontSize: '0.9rem', mt: 1 }}>
-                  {project.description}
-                </Typography>
-                {project.link && (
-                  <Typography sx={{ fontSize: '0.9rem', color: '#1976d2', mt: 0.5 }}>
-                    <a href={project.link} target='_blank' rel='noopener noreferrer'>
-                      {project.link}
-                    </a>
-                  </Typography>
-                )}
-              </Box>
-            ))}
-          </Box>
-        )}
-
-        {education.length > 0 && (
-          <Box sx={{ mb: 3 }}>
-            <Typography
-              variant='h5'
-              sx={{
-                fontWeight: isModern ? 'bold' : 'normal',
-                fontSize: isModern ? '1.25rem' : '1.1rem',
-                color: isModern ? '#1976d2' : '#000',
-                borderBottom: isModern ? '2px solid #e0e0e0' : '1px solid #000',
-                pb: 0.5,
-              }}
-            >
-              Education
-            </Typography>
-            {education.map((edu, index) => (
-              <Box key={index} sx={{ mt: 2 }}>
-                <Typography sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
-                  {edu.degree} - {edu.institution}
-                </Typography>
-                <Typography sx={{ fontSize: '0.9rem', color: '#555' }}>
-                  {edu.year}
-                </Typography>
-              </Box>
-            ))}
-          </Box>
-        )}
       </Box>
-    );
-  };
+
+      {/* Rest of the ModernResume component remains unchanged */}
+      {jobTitle && (
+        <Box sx={{ mb: 3 }}>
+          <Typography
+            variant='h5'
+            sx={{
+              fontWeight: isModern ? 'bold' : 'normal',
+              fontSize: isModern ? '1.25rem' : '1.1rem',
+              color: isModern ? '#1976d2' : '#000',
+              borderBottom: isModern ? '2px solid #e0e0e0' : '1px solid #000',
+              pb: 0.5,
+            }}
+          >
+            {isModern ? 'Career Objective' : 'Objective'}
+          </Typography>
+          <Typography sx={{ mt: 1, fontSize: '0.95rem' }}>
+            Seeking a position as a {jobTitle} to leverage my skills and experience in a dynamic environment.
+          </Typography>
+        </Box>
+      )}
+      {selectedSkills.length > 0 && (
+        <Box sx={{ mb: 3 }}>
+          <Typography
+            variant='h5'
+            sx={{
+              fontWeight: isModern ? 'bold' : 'normal',
+              fontSize: isModern ? '1.25rem' : '1.1rem',
+              color: isModern ? '#1976d2' : '#000',
+              borderBottom: isModern ? '2px solid #e0e0e0' : '1px solid #000',
+              pb: 0.5,
+            }}
+          >
+            Skills
+          </Typography>
+          <Box
+            sx={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 1,
+              mt: 1,
+            }}
+          >
+            {selectedSkills.map((skill, index) => (
+              <Typography
+                key={index}
+                sx={{
+                  fontSize: '0.95rem',
+                  backgroundColor: isModern ? '#e3f2fd' : 'transparent',
+                  borderRadius: isModern ? '12px' : 'none',
+                  padding: isModern ? '4px 12px' : '0',
+                  display: 'inline-block',
+                }}
+              >
+                {skill}
+              </Typography>
+            ))}
+          </Box>
+        </Box>
+      )}
+      {(workExperience.length > 0 || internships.length > 0) && (
+        <Box sx={{ mb: 3 }}>
+          <Typography
+            variant='h5'
+            sx={{
+              fontWeight: isModern ? 'bold' : 'normal',
+              fontSize: isModern ? '1.25rem' : '1.1rem',
+              color: isModern ? '#1976d2' : '#000',
+              borderBottom: isModern ? '2px solid #e0e0e0' : '1px solid #000',
+              pb: 0.5,
+            }}
+          >
+            {isFresher ? 'Internships' : 'Work Experience'}
+          </Typography>
+          {isFresher
+            ? internships.map((intern, index) => (
+                <Box key={index} sx={{ mt: 2 }}>
+                  <Typography sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
+                    {intern.role} - {intern.company}
+                  </Typography>
+                  <Typography sx={{ fontSize: '0.9rem', color: '#555' }}>
+                    {intern.startDate} - {intern.endDate}
+                  </Typography>
+                  <Typography sx={{ fontSize: '0.9rem', mt: 1 }}>
+                    {intern.description}
+                  </Typography>
+                </Box>
+              ))
+            : workExperience.map((exp, index) => (
+                <Box key={index} sx={{ mt: 2 }}>
+                  <Typography sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
+                    {exp.role} - {exp.company}
+                  </Typography>
+                  <Typography sx={{ fontSize: '0.9rem', color: '#555' }}>
+                    {exp.startDate} - {exp.endDate}
+                  </Typography>
+                </Box>
+              ))}
+        </Box>
+      )}
+      {projects.length > 0 && (
+        <Box sx={{ mb: 3 }}>
+          <Typography
+            variant='h5'
+            sx={{
+              fontWeight: isModern ? 'bold' : 'normal',
+              fontSize: isModern ? '1.25rem' : '1.1rem',
+              color: isModern ? '#1976d2' : '#000',
+              borderBottom: isModern ? '2px solid #e0e0e0' : '1px solid #000',
+              pb: 0.5,
+            }}
+          >
+            Projects
+          </Typography>
+          {projects.map((project, index) => (
+            <Box key={index} sx={{ mt: 2 }}>
+              <Typography sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
+                {project.title}
+              </Typography>
+              <Typography sx={{ fontSize: '0.9rem', color: '#555' }}>
+                Tech Stack: {project.techStack}
+              </Typography>
+              <Typography sx={{ fontSize: '0.9rem', mt: 1 }}>
+                {project.description}
+              </Typography>
+              {project.link && (
+                <Typography sx={{ fontSize: '0.9rem', color: '#1976d2', mt: 0.5 }}>
+                  <a href={project.link} target='_blank' rel='noopener noreferrer'>
+                    {project.link}
+                  </a>
+                </Typography>
+              )}
+            </Box>
+          ))}
+        </Box>
+      )}
+      {education.length > 0 && (
+        <Box sx={{ mb: 3 }}>
+          <Typography
+            variant='h5'
+            sx={{
+              fontWeight: isModern ? 'bold' : 'normal',
+              fontSize: isModern ? '1.25rem' : '1.1rem',
+              color: isModern ? '#1976d2' : '#000',
+              borderBottom: isModern ? '2px solid #e0e0e0' : '1px solid #000',
+              pb: 0.5,
+            }}
+          >
+            Education
+          </Typography>
+          {education.map((edu, index) => (
+            <Box key={index} sx={{ mt: 2 }}>
+              <Typography sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
+                {edu.degree} - {edu.institution}
+              </Typography>
+              <Typography sx={{ fontSize: '0.9rem', color: '#555' }}>
+                {edu.year}
+              </Typography>
+            </Box>
+          ))}
+        </Box>
+      )}
+    </Box>
+  );
+};
 
   if (loading) return <Typography>Loading profile data...</Typography>;
   if (error)
@@ -1125,17 +1194,17 @@ export default function ResumeBuilderPage() {
         <Typography color='error'>{error}</Typography>
         <Button
           variant='contained'
-          onClick={() => router.push('/login')}
+          onClick={() => router.push('/user/profile')}
           sx={{ mt: 2 }}
         >
-          Go to Login
+          Profile Complete
         </Button>
       </Box>
     );
 
   return (
     <Box p={4} bgcolor='#f5f5f5' minHeight='100vh'>
-      <IconButton onClick={() => router.push('/user/Userdashboard')}>
+      <IconButton onClick={() => router.push('/')}>
         <ArrowBackIcon />
       </IconButton>
       <Typography variant='h6' ml={1}>
