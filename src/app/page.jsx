@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Box, Container, Paper, Divider, Grid, Typography, Button, Card, CardMedia, CardContent, Checkbox, Chip, CardActions, Rating, Skeleton
 } from '@mui/material';
@@ -10,7 +11,7 @@ import LandingAuthPopup from '../components/LandingAuthPopup';
 import Navbar from '../components/Navbar';
 import { useError } from '../context/ErrorContext';
 
-// ✅ NEW: Skeleton component for the main dashboard layout
+// Skeleton component for the main dashboard layout
 const DashboardSkeleton = () => (
   <Container maxWidth="lg" sx={{ py: 4 }}>
     <Grid container spacing={4}>
@@ -39,7 +40,7 @@ const DashboardSkeleton = () => (
         <Paper sx={{ p: 3, borderRadius: 2 }}>
           <Skeleton variant="text" width="40%" height={30} />
           <Skeleton variant="text" width="70%" height={20} sx={{ mt: 1, mb: 2 }}/>
-           {[...Array(3)].map((_, i) => (
+            {[...Array(3)].map((_, i) => (
               <Box key={i} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                 <Skeleton variant="rectangular" width={24} height={24} sx={{ mr: 1 }}/>
                 <Skeleton variant="text" width="40%" height={24} />
@@ -51,17 +52,17 @@ const DashboardSkeleton = () => (
         <Skeleton variant="text" width="80%" height={35} sx={{ mb: 2 }} />
         {/* Course Cards Skeleton */}
         {[...Array(3)].map((_, i) => (
-           <Card key={i} sx={{ mb: 3, boxShadow: 3 }}>
-              <Skeleton variant="rectangular" height={120} />
-              <CardContent>
-                <Skeleton variant="text" height={24} />
-                <Skeleton variant="text" width="60%" height={20} />
-              </CardContent>
-              <CardActions sx={{p: 1.5, pt: 0, justifyContent: 'space-between'}}>
-                 <Skeleton variant="text" width="30%" height={30} />
-                 <Skeleton variant="rectangular" width={80} height={30} />
-              </CardActions>
-            </Card>
+          <Card key={i} sx={{ mb: 3, boxShadow: 3 }}>
+            <Skeleton variant="rectangular" height={120} />
+            <CardContent>
+              <Skeleton variant="text" height={24} />
+              <Skeleton variant="text" width="60%" height={20} />
+            </CardContent>
+            <CardActions sx={{p: 1.5, pt: 0, justifyContent: 'space-between'}}>
+                <Skeleton variant="text" width="30%" height={30} />
+                <Skeleton variant="rectangular" width={80} height={30} />
+            </CardActions>
+          </Card>
         ))}
       </Grid>
     </Grid>
@@ -70,6 +71,7 @@ const DashboardSkeleton = () => (
 
 
 export default function ResumeBuilder() {
+  const router = useRouter();
   const { showError } = useError();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
@@ -78,7 +80,7 @@ export default function ResumeBuilder() {
   const [showPopup, setShowPopup] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const [showLandingAuthPopup, setShowLandingAuthPopup] = useState(false);
-  const [loadingProfile, setLoadingProfile] = useState(true); // Start as true
+  const [loadingProfile, setLoadingProfile] = useState(true);
 
   const courses = [
     {
@@ -133,12 +135,12 @@ export default function ResumeBuilder() {
     const fetchCandidateProfile = async () => {
       const token = localStorage.getItem('authToken');
       if (!token || !currentUser) {
-          setLoadingProfile(false); // Stop loading if no user/token
+          setLoadingProfile(false);
           return;
       }
       setLoadingProfile(true);
       try {
-        const response = await axios.get('http://localhost:5000/api/candidates/me', {
+        const response = await axios.get('http://localhost:5000/api/candidates/getmyprofileId', {
           headers: { Authorization: `Bearer ${token}` }
         });
         const data = response.data;
@@ -150,8 +152,22 @@ export default function ResumeBuilder() {
         }
 
       } catch (err) {
-        const errorMessage = err.response?.data?.message || 'Could not fetch your profile details. Please try again later.';
-        showError(errorMessage, 'Profile Error');
+        // ✅ MODIFICATION: Custom error handling based on status code
+        if (err.response && err.response.status === 404) {
+          // If profile is not found (404), show a popup with a specific action.
+          showError(
+            'Your candidate profile was not found. Please create one to proceed.',
+            'Profile Not Found',
+            {
+              text: 'Complete Profile',
+              onClick: () => router.push('/user/profile')
+            }
+          );
+        } else {
+          // For all other errors, show a generic message.
+          const errorMessage = err.response?.data?.message || 'Could not fetch your profile details. Please try again later.';
+          showError(errorMessage, 'Profile Error');
+        }
       } finally {
         setLoadingProfile(false);
       }
@@ -159,9 +175,9 @@ export default function ResumeBuilder() {
     if (currentUser) {
       fetchCandidateProfile();
     } else {
-        setLoadingProfile(false); // Ensure loading stops if there's no user
+        setLoadingProfile(false);
     }
-  }, [currentUser, showError]);
+  }, [currentUser, showError, router]);
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -211,12 +227,11 @@ export default function ResumeBuilder() {
   };
   const handleClosePopup = () => setShowPopup(false);
 
-  // ✅ MODIFICATION: Use the new Skeleton component during the loading state
   if (authLoading || loadingProfile) {
     return (
-       <Box sx={{ flexGrow: 1 }}>
-         <DashboardSkeleton />
-       </Box>
+        <Box sx={{ flexGrow: 1 }}>
+          <DashboardSkeleton />
+        </Box>
     );
   }
 

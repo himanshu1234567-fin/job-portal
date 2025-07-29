@@ -39,7 +39,7 @@ export default function CreativeUserHeader() {
       if (!token) return;
 
       try {
-        const res = await axios.get("http://localhost:5000/api/candidates/me", {
+        const res = await axios.get("http://localhost:5000/api/candidates/getmyprofileId", {
           headers: { Authorization: `Bearer ${token}` },
         });
 

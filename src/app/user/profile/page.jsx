@@ -216,7 +216,7 @@ setCompletion(percent);
         const userRes = await axios.get("http://localhost:5000/api/candidates/user-id", config);
         setCurrentUserId(userRes.data._id);
 
-        const candRes = await axios.get("http://localhost:5000/api/candidates/me", config);
+        const candRes = await axios.get("http://localhost:5000/api/candidates/getmyprofileId", config);
         if (candRes.data) {
           setCandidateId(candRes.data._id);
           setProfileData({

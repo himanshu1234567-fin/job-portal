@@ -11,7 +11,7 @@ import axios from 'axios';
 
 
 // ✅ MODIFICATION: Added 'initialMessage' prop to accept a message on open.
-export default function LandingAuthPopup({ open, onSuccess, onClose, initialMessage }) {
+export default function LandingAuthPopup1({ open, onSuccess, onClose, initialMessage }) {
   const [tab, setTab] = useState(0);
   const [error, setError] = useState('');
   const router = useRouter();
@@ -109,7 +109,7 @@ export default function LandingAuthPopup({ open, onSuccess, onClose, initialMess
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
       <DialogTitle sx={{ m: 0, p: 2 }}>
         <Typography variant="h6" align="center">
-          {tab === 0 ? 'Sign In' : 'Sign Up'}
+          {tab === 0 ? 'Please Login/Sign Up to Continue' : 'Please Login/Sign Up to Continue'}
         </Typography>
         <IconButton
           aria-label="close"

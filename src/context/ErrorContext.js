@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Dialog, DialogContent, DialogTitle, Typography, Button, Box, IconButton } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
@@ -16,9 +17,9 @@ const ErrorContext = createContext(undefined);
 export const ErrorProvider = ({ children }) => {
   const [error, setError] = useState(null);
 
-  // A function that components can call to show an error popup
-  const showError = useCallback((message, title = 'An Error Occurred') => {
-    setError({ message, title });
+  // showError now accepts an optional 'action' object.
+  const showError = useCallback((message, title = 'An Error Occurred', action = null) => {
+    setError({ message, title, action });
   }, []);
 
   // Function to close the popup
@@ -33,6 +34,7 @@ export const ErrorProvider = ({ children }) => {
         open={!!error}
         title={error?.title || ''}
         message={error?.message || ''}
+        action={error?.action || null}
         handleClose={handleClose}
       />
     </ErrorContext.Provider>
@@ -53,7 +55,18 @@ export const useError = () => {
 /**
  * The actual UI for the error popup dialog.
  */
-const ErrorPopup = ({ open, handleClose, title, message }) => {
+const ErrorPopup = ({ open, handleClose, title, message, action }) => {
+  // This handler executes the custom action's onClick function.
+  const handleActionClick = () => {
+    if (action && typeof action.onClick === 'function') {
+      action.onClick();
+    }
+    handleClose(); // Also close the dialog after the action is performed
+  };
+
+  // ✅ MODIFICATION: Conditionally show the icon based on the title.
+  const showIcon = title !== 'Profile Not Found';
+
   return (
     <AnimatePresence>
       {open && (
@@ -72,7 +85,8 @@ const ErrorPopup = ({ open, handleClose, title, message }) => {
         >
           <DialogTitle sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              <ErrorOutlineIcon color="error" sx={{ fontSize: '2rem' }} />
+              {/* ✅ MODIFICATION: Icon is now rendered conditionally */}
+              {showIcon && <ErrorOutlineIcon color="error" sx={{ fontSize: '2rem' }} />}
               <Typography variant="h6" component="div" fontWeight="bold">
                 {title}
               </Typography>
@@ -85,8 +99,18 @@ const ErrorPopup = ({ open, handleClose, title, message }) => {
             <Typography gutterBottom>
               {message}
             </Typography>
-            <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
-              <Button onClick={handleClose} variant="contained" color="primary" sx={{ borderRadius: '8px' }}>
+            <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 1.5 }}>
+              {action && (
+                <Button onClick={handleActionClick} variant="contained" color="primary" sx={{ borderRadius: '8px' }}>
+                  {action.text}
+                </Button>
+              )}
+              <Button 
+                onClick={handleClose} 
+                variant={action ? "outlined" : "contained"} 
+                color="secondary" 
+                sx={{ borderRadius: '8px' }}
+              >
                 Close
               </Button>
             </Box>
