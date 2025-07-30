@@ -60,7 +60,7 @@ const AdminMCQGenerator = () => {
         return;
       }
       try {
-        const response = await axios.get("http://localhost:5000/api/candidates/allusers", {
+        const response = await axios.get("http://localhost:5000/api/candidates/", {
           headers: { 'Authorization': `Bearer ${authToken}` }
         });
         setCandidates(response.data.candidates || []);

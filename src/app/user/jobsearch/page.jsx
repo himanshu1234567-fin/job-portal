@@ -1,31 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from '../../../lib/axiosInstance';
 import {
-  Container,
-  Box,
-  Paper,
-  Grid,
-  TextField,
-  InputAdornment,
-  Button,
-  IconButton,
-  Tabs,
-  Tab,
-  Typography,
-  Chip,
-  Select,
-  MenuItem,
-  FormControl,
-  Divider,
-  Avatar,
-  Fade,
-  Grow,
-  ThemeProvider,
-  createTheme,
-  CssBaseline,
-  Skeleton
+    Container, Box, Paper, Grid, TextField, InputAdornment, Button, IconButton,
+    Tabs, Tab, Typography, Chip, Select, MenuItem, FormControl, Divider, Avatar,
+    Fade, Grow, ThemeProvider, createTheme, CssBaseline, Skeleton
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import TuneIcon from '@mui/icons-material/Tune';
@@ -63,21 +43,11 @@ const muiTheme = createTheme({
 const SearchFilterSkeleton = () => (
     <Paper elevation={0} variant="outlined" sx={{ p: 2, mb: 4 }}>
         <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={3}>
-                <Skeleton variant="rectangular" height={56} sx={{ borderRadius: 1 }} />
-            </Grid>
-            <Grid item xs={12} md={3}>
-                <Skeleton variant="rectangular" height={56} sx={{ borderRadius: 1 }} />
-            </Grid>
-            <Grid item xs={12} sm={6} md={2}>
-                <Skeleton variant="rectangular" height={56} sx={{ borderRadius: 1 }} />
-            </Grid>
-            <Grid item xs={12} sm={6} md={2}>
-                <Skeleton variant="rectangular" height={56} sx={{ borderRadius: 1 }} />
-            </Grid>
-            <Grid item xs={12} md={2}>
-                 <Skeleton variant="rectangular" height={56} sx={{ borderRadius: 1 }} />
-            </Grid>
+            <Grid item xs={12} md={3}><Skeleton variant="rectangular" height={56} sx={{ borderRadius: 1 }} /></Grid>
+            <Grid item xs={12} md={3}><Skeleton variant="rectangular" height={56} sx={{ borderRadius: 1 }} /></Grid>
+            <Grid item xs={12} sm={6} md={2}><Skeleton variant="rectangular" height={56} sx={{ borderRadius: 1 }} /></Grid>
+            <Grid item xs={12} sm={6} md={2}><Skeleton variant="rectangular" height={56} sx={{ borderRadius: 1 }} /></Grid>
+            <Grid item xs={12} md={2}><Skeleton variant="rectangular" height={56} sx={{ borderRadius: 1 }} /></Grid>
         </Grid>
     </Paper>
 );
@@ -161,62 +131,97 @@ const JobSearchPage = () => {
     }, []);
 
     useEffect(() => {
-        const fetchJobs = async () => {
+        const fetchAndPartitionJobs = async () => {
             setLoading(true);
             const url = 'https://remotive.com/api/remote-jobs?limit=100';
+
             try {
                 const response = await axios.get(url);
-                const data = response.data;
-                const jobsWithDates = data.jobs.map((j) => ({
+                const allFetchedJobs = response.data.jobs.map((j) => ({
                     ...j,
                     publication_date_obj: new Date(j.publication_date),
                 }));
-                setAllJobs(jobsWithDates);
-                setJobs(jobsWithDates);
-                if (jobsWithDates.length > 0) setSelectedJob(jobsWithDates[0]);
+
+                const appliedJobIds = new Set(
+                    JSON.parse(localStorage.getItem('appliedJobs') || '[]')
+                );
+
+                const availableJobs = allFetchedJobs.filter(job => !appliedJobIds.has(job.id));
+                const previouslyAppliedJobs = allFetchedJobs.filter(job => appliedJobIds.has(job.id));
+
+                setAllJobs(availableJobs);
+                setJobs(availableJobs);
+                setAppliedJobs(previouslyAppliedJobs);
+
+                if (availableJobs.length > 0) {
+                    setSelectedJob(availableJobs[0]);
+                }
+
             } catch (err) {
-                const errorMessage = 'Unable to Fetch jobs,Please Reload!!';
+                const errorMessage = 'Unable to Fetch jobs, Please Reload!!';
                 showError(errorMessage, 'Job Fetch Error');
             } finally {
                 setLoading(false);
             }
         };
-        fetchJobs();
-    }, [showError]);
 
-    useEffect(() => {
-        if (!allJobs.length) return;
-        const storedApplied = localStorage.getItem('appliedJobs') || '[]';
-        try {
-            const appliedJobIds = JSON.parse(storedApplied);
-            const appliedFullJobs = allJobs.filter((job) => appliedJobIds.includes(job.id));
-            setAppliedJobs(appliedFullJobs);
-        } catch {
-            setAppliedJobs([]);
-        }
-    }, [allJobs]);
+        fetchAndPartitionJobs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
-    // ✅ NEW: Function to handle successful job application
-    const handleJobApplicationSuccess = (appliedJob) => {
-        // Add job to applied jobs list
-        setAppliedJobs((prev) => {
-            if (prev.some((j) => j.id === appliedJob.id)) return prev;
-            const updated = [...prev, appliedJob];
-            localStorage.setItem('appliedJobs', JSON.stringify(updated.map((j) => j.id)));
-            return updated;
+    const handleJobApplicationSuccess = useCallback((appliedJob) => {
+        if (!appliedJob) return;
+
+        setAppliedJobs((prevApplied) => {
+            if (prevApplied.some((j) => j.id === appliedJob.id)) {
+                return prevApplied;
+            }
+            const updatedApplied = [...prevApplied, appliedJob];
+            localStorage.setItem('appliedJobs', JSON.stringify(updatedApplied.map(j => j.id)));
+            return updatedApplied;
         });
 
-        // Remove from bookmarks if it was bookmarked
+        setAllJobs((prev) => prev.filter((job) => job.id !== appliedJob.id));
+        setJobs((prev) => prev.filter((job) => job.id !== appliedJob.id));
         setBookmarkedJobs((prev) => prev.filter((job) => job.id !== appliedJob.id));
-
-        // Switch to applied tab to show the job
-        setTabIndex(2);
         
-        // Clear pending job
+        if (selectedJob?.id === appliedJob.id) {
+           const nextJobs = allJobs.filter((job) => job.id !== appliedJob.id);
+           setSelectedJob(nextJobs.length > 0 ? nextJobs[0] : null);
+        }
+        
+        setTabIndex(2);
         setPendingApplyJob(null);
-    };
+    }, [allJobs, selectedJob]);
 
-    // ✅ MODIFIED: Updated handlePopupExited to use the new success handler
+
+    useEffect(() => {
+        const handleStorageChange = (event) => {
+            if (event.key === 'Payment verification response' && event.newValue) {
+                try {
+                    const paymentData = JSON.parse(event.newValue);
+                    const jobId = paymentData.jobId;
+
+                    if (jobId) {
+                        const jobToMove = allJobs.find(j => j.id === jobId);
+                        if (jobToMove) {
+                            console.log(`Detected application for job ${jobId} from another tab.`);
+                            handleJobApplicationSuccess(jobToMove);
+                        }
+                    }
+                } catch (error) {
+                    console.error("Could not process payment verification from storage:", error);
+                }
+            }
+        };
+
+        window.addEventListener('storage', handleStorageChange);
+
+        return () => {
+            window.removeEventListener('storage', handleStorageChange);
+        };
+    }, [allJobs, handleJobApplicationSuccess]);
+
     const handlePopupExited = () => {
         if (pendingApplyJob) {
             handleJobApplicationSuccess(pendingApplyJob);
@@ -297,7 +302,6 @@ const JobSearchPage = () => {
         });
     };
 
-    // ✅ MODIFIED: Updated handleApplyConfirm to set pending job for later processing
     const handleApplyConfirm = (job) => {
         setPendingApplyJob(job);
         setOpenPopup(false);
@@ -305,13 +309,9 @@ const JobSearchPage = () => {
 
     const renderJobList = () => {
         if (loading) {
-            return (
-                <Box>
-                    {[...Array(5)].map((_, i) => <JobItemSkeleton key={i} />)}
-                </Box>
-            );
+            return <Box>{[...Array(5)].map((_, i) => <JobItemSkeleton key={i} />)}</Box>;
         }
-       
+        
         let jobListToRender = [];
         let message = "No results match your search criteria. ✨";
         switch (tabIndex) {
@@ -373,7 +373,7 @@ const JobSearchPage = () => {
                                 <Chip label="Remote" size="small" variant="outlined" color="success" />
                             </Box>
                             <Typography variant="caption" color="text.secondary">
-                                Posted {formatDistanceToNow(job.publication_date_obj, { addSuffix: true })}
+                                Posted {job.publication_date_obj ? formatDistanceToNow(job.publication_date_obj, { addSuffix: true }) : ''}
                             </Typography>
                         </Paper>
                     </Box>
@@ -408,7 +408,7 @@ const JobSearchPage = () => {
                                     <Grid item xs={12} md={3}>
                                         <TextField fullWidth variant="outlined" placeholder="Location (e.g. USA, Europe)" value={locationQuery} onChange={(e) => setLocationQuery(e.target.value)} InputProps={{ startAdornment: <InputAdornment position="start"><img src="https://flagcdn.com/w20/us.png" width="20" alt="World Flag" /></InputAdornment> }} />
                                     </Grid>
-                                    <Grid item xs={12} sm={6} md={2}>
+                                    <Grid item xs={12} sm={6} md={3}>
                                         <FormControl fullWidth variant="outlined">
                                             <Select value={workType} onChange={(e) => setWorkType(e.target.value)} IconComponent={ArrowDropDownIcon}>
                                                 <MenuItem value="all">On-site / Remote</MenuItem>
@@ -418,7 +418,7 @@ const JobSearchPage = () => {
                                             </Select>
                                         </FormControl>
                                     </Grid>
-                                    <Grid item xs={12} sm={6} md={2}>
+                                    <Grid item xs={12} sm={6} md={3}>
                                         <FormControl fullWidth variant="outlined">
                                             <Select defaultValue="" displayEmpty IconComponent={ArrowDropDownIcon}>
                                                 <MenuItem value="" disabled>Salary (any)</MenuItem>
@@ -427,12 +427,6 @@ const JobSearchPage = () => {
                                                 <MenuItem value="3" disabled>₹10L - ₹15L</MenuItem>
                                             </Select>
                                         </FormControl>
-                                    </Grid>
-                                    <Grid item xs={12} md={2}>
-                                        <Box sx={{ display: 'flex', gap: 1 }}>
-                                            <Button variant="contained" color="primary" sx={{ flexGrow: 1, py: '14px' }} aria-label="search"><SearchIcon /></Button>
-                                            <IconButton sx={{ border: '1px solid', borderColor: 'divider' }} aria-label="filters"><TuneIcon /></IconButton>
-                                        </Box>
                                     </Grid>
                                 </Grid>
                             </Paper>
@@ -480,7 +474,7 @@ const JobSearchPage = () => {
                                                     {selectedJob?.salary && <Chip label={selectedJob.salary} />}
                                                 </Box>
                                                 <Typography variant="body2" color="text.secondary">
-                                                    Posted {selectedJob && formatDistanceToNow(selectedJob.publication_date_obj, { addSuffix: true })}
+                                                    Posted {selectedJob && selectedJob.publication_date_obj ? formatDistanceToNow(selectedJob.publication_date_obj, { addSuffix: true }) : ''}
                                                 </Typography>
 
                                                 <Divider sx={{ my: 3 }} />
@@ -543,7 +537,6 @@ const JobSearchPage = () => {
                             )}
                         </Grid>
 
-                        {/* ✅ MODIFIED: Updated ApplyPopup with success callback */}
                         <ApplyPopup
                             open={openPopup}
                             handleClose={handleClosePopup}
