@@ -44,7 +44,7 @@ const plans = [
   { id: 'plan4', name: '₹999 - Unlimited Resumes (1 Year)', price: 99900, limit: Infinity, validityDays: 365 },
 ];
 
-const steps = ['Upload Resume', 'Contact Information', 'Job Title', 'Educational Background', 'Work Experience', 'Project Details', 'Skills', 'Choose Template'];
+const steps = ['Upload Resume', 'Contact Information', 'Job Title', 'Educational Background', 'Work Experience', 'Project Details', 'Skills', 'Certificates', 'Interests', 'Choose Template'];
 
 export default function ResumeBuilderPage() {
   const router = useRouter();
@@ -65,11 +65,19 @@ export default function ResumeBuilderPage() {
     phone: '',
     email: '',
     linkedIn: '',
+    github: '',
+    portfolio: '',
+    dob: '',
   });
   const [jobTitle, setJobTitle] = useState('');
   const [languages, setLanguages] = useState([]);
   const [selectedLanguage, setSelectedLanguage] = useState('English (United States)');
-  const [education, setEducation] = useState([]);
+  const [education, setEducation] = useState({
+    tenth: { board: '', passingYear: '', percentage: '' },
+    twelfthOrDiploma: { type: '12th', board: '', institution: '', passingYear: '', percentage: '' },
+    bachelor: { degree: '', branch: '', institution: '', passingYear: '', cgpa: '' },
+    master: { degree: '', branch: '', institution: '', passingYear: '', cgpa: '', hasMaster: false },
+  });
   const [workExperience, setWorkExperience] = useState([]);
   const [internships, setInternships] = useState([]);
   const [isFresher, setIsFresher] = useState(false);
@@ -80,6 +88,9 @@ export default function ResumeBuilderPage() {
   const [resumeFile, setResumeFile] = useState(null);
   const [noResume, setNoResume] = useState(false);
   const [profileImage, setProfileImage] = useState(null);
+  const [certificates, setCertificates] = useState([]);
+  const [interests, setInterests] = useState([]);
+  const [customInterest, setCustomInterest] = useState('');
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -100,14 +111,23 @@ export default function ResumeBuilderPage() {
         setProfile({
           fullName: data.fullName || '',
           email: data.email || '',
-          phone: data.phone || '',
+          phone: data.contact || '',
+          dob: data.dob?.substr(0, 10) || '',
           education: data.education || [],
           skills: data.skills || [],
           experience: data.experience || [],
           internships: data.internships || [],
           projects: data.projects || [],
-          desirableJob: data.desirableJob || '',
+          desirableJob: data.desirableJob || [],
+          interests: data.interests || [],
         });
+
+        // Map education data
+        const educationData = data.education || [];
+        const tenthData = educationData[0] || {};
+        const twelfthData = educationData[0] || {};
+        const bachelorData = educationData.find(ed => ed.collegeDegree) || {};
+        const masterData = educationData.find(ed => ed.collegeDegree && ed !== bachelorData) || {};
 
         setContactInfo({
           firstName: data.fullName ? data.fullName.split(' ')[0] : '',
@@ -115,43 +135,78 @@ export default function ResumeBuilderPage() {
           location: '',
           zipCode: '',
           country: '',
-          phone: data.phone || '',
+          phone: data.contact || '',
           email: data.email || '',
           linkedIn: '',
+          github: '',
+          portfolio: '',
+          dob: data.dob?.substr(0, 10) || '',
         });
-        setJobTitle(data.desirableJob || '');
-        setEducation(data.education || []);
+
+        setJobTitle(data.desirableJob && data.desirableJob.length > 0 ? data.desirableJob[0] : '');
+        setEducation({
+          tenth: {
+            board: tenthData.board10 || '',
+            passingYear: tenthData.passingYear ? String(tenthData.passingYear) : '',
+            percentage: tenthData.percentage10 ? String(tenthData.percentage10) : '',
+          },
+          twelfthOrDiploma: {
+            type: '12th', // Default to 12th, as API doesn't specify diploma
+            board: twelfthData.board12 || '',
+            institution: '',
+            passingYear: twelfthData.passingYear ? String(twelfthData.passingYear) : '',
+            percentage: twelfthData.percentage12 ? String(twelfthData.percentage12) : '',
+          },
+          bachelor: {
+            degree: bachelorData.collegeDegree || '',
+            branch: bachelorData.branch || '',
+            institution: bachelorData.college || '',
+            passingYear: bachelorData.passingYear ? String(bachelorData.passingYear) : '',
+            cgpa: bachelorData.cgpa ? String(bachelorData.cgpa) : '',
+          },
+          master: {
+            degree: masterData.collegeDegree || '',
+            branch: masterData.branch || '',
+            institution: masterData.college || '',
+            passingYear: masterData.passingYear ? String(masterData.passingYear) : '',
+            cgpa: masterData.cgpa ? String(masterData.cgpa) : '',
+            hasMaster: !!masterData.collegeDegree,
+          },
+        });
+
         setWorkExperience(
           Array.isArray(data.experience) && data.experience.length > 0
             ? data.experience.map((exp) => ({
-              company: exp.company || '',
-              role: exp.role || '',
-              startDate: exp.startDate || '',
-              endDate: exp.endDate || '',
-            }))
+                company: exp.companyName || '',
+                role: exp.role || '',
+                startDate: '',
+                endDate: '',
+                description: '',
+              }))
             : []
         );
         setInternships(
           Array.isArray(data.internships) && data.internships.length > 0
             ? data.internships.map((intern) => ({
-              company: intern.company || '',
-              role: intern.role || '',
-              startDate: intern.startDate || '',
-              endDate: intern.endDate || '',
-              description: intern.description || '',
-            }))
+                company: intern.company || '',
+                role: intern.role || '',
+                startDate: intern.startDate || '',
+                endDate: intern.endDate || '',
+                description: intern.description || '',
+              }))
             : []
         );
         setProjects(
           Array.isArray(data.projects) && data.projects.length > 0
             ? data.projects.map((proj) => ({
-              title: proj.title || '',
-              description: proj.description || '',
-              techStack: proj.techStack || '',
-              link: proj.link || '',
-            }))
+                title: proj.title || '',
+                description: proj.description || '',
+                techStack: proj.techStack || '',
+                link: proj.link || '',
+              }))
             : []
         );
+        setInterests(data.interests || []);
         setIsFresher(data.experience?.length === 0);
         setMustHaveSkills(['JavaScript', 'React', 'Node.js', 'CSS', 'HTML', 'Python', 'Java', 'SQL', 'Git', 'AWS']);
         setSelectedSkills(data.skills || []);
@@ -160,8 +215,7 @@ export default function ResumeBuilderPage() {
         console.error('Error fetching profile:', error);
         if (error.response) {
           setError(
-            `Failed to load profile data: ${error.response.status} ${error.response.statusText}${error.response.data?.message ? ` - ${error.response.data.message}` : ''
-            }`
+            `Failed to load profile data: ${error.response.status} ${error.response.statusText}${error.response.data?.message ? ` - ${error.response.data.message}` : ''}`
           );
         } else if (error.request) {
           setError('Failed to load profile data: Unable to connect to the server. Please check if the server is running.');
@@ -183,16 +237,29 @@ export default function ResumeBuilderPage() {
     setContactInfo((prev) => ({ ...prev, [field]: value }));
   };
 
-  const addEducation = () => setEducation((prev) => [...prev, { degree: '', institution: '', year: '' }]);
-  const removeEducation = (index) => setEducation((prev) => prev.filter((_, i) => i !== index));
-  const handleEducationChange = (index, field, value) => {
-    setEducation((prev) =>
-      prev.map((edu, i) => (i === index ? { ...edu, [field]: value } : edu))
-    );
+  const handleEducationChange = (section, field, value) => {
+    setEducation((prev) => ({
+      ...prev,
+      [section]: { ...prev[section], [field]: value },
+    }));
+  };
+
+  const handleTwelfthOrDiplomaTypeChange = (value) => {
+    setEducation((prev) => ({
+      ...prev,
+      twelfthOrDiploma: { ...prev.twelfthOrDiploma, type: value, board: '', institution: '', passingYear: '', percentage: '' },
+    }));
+  };
+
+  const handleMasterToggle = () => {
+    setEducation((prev) => ({
+      ...prev,
+      master: { ...prev.master, hasMaster: !prev.master.hasMaster },
+    }));
   };
 
   const addWorkExp = () =>
-    setWorkExperience((prev) => [...prev, { company: '', role: '', startDate: '', endDate: '' }]);
+    setWorkExperience((prev) => [...prev, { company: '', role: '', startDate: '', endDate: '', description: '' }]);
   const removeWorkExp = (index) => setWorkExperience((prev) => prev.filter((_, i) => i !== index));
   const handleWorkExpChange = (index, field, value) => {
     setWorkExperience((prev) =>
@@ -230,6 +297,17 @@ export default function ResumeBuilderPage() {
       setSelectedSkills((prev) => [...prev, customSkill.trim()]);
       setCustomSkill('');
     }
+  };
+
+  const addCustomInterest = () => {
+    if (customInterest.trim() && !interests.includes(customInterest.trim())) {
+      setInterests((prev) => [...prev, customInterest.trim()]);
+      setCustomInterest('');
+    }
+  };
+
+  const removeInterest = (index) => {
+    setInterests((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleFileChange = (event) => {
@@ -371,7 +449,6 @@ export default function ResumeBuilderPage() {
               Your Contact Information
             </Typography>
             <Grid container spacing={2}>
-              {/* Profile Image Upload */}
               <Grid item xs={12}>
                 <Box
                   sx={{
@@ -419,7 +496,6 @@ export default function ResumeBuilderPage() {
                   </Typography>
                 </Box>
               </Grid>
-              {/* Existing Contact Information Fields */}
               <Grid item xs={12} sm={6}>
                 <TextField
                   label='First Name'
@@ -436,6 +512,17 @@ export default function ResumeBuilderPage() {
                   size='small'
                   value={contactInfo.lastName}
                   onChange={(e) => handleContactChange('lastName', e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Date of Birth'
+                  type='date'
+                  fullWidth
+                  size='small'
+                  InputLabelProps={{ shrink: true }}
+                  value={contactInfo.dob}
+                  onChange={(e) => handleContactChange('dob', e.target.value)}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -490,6 +577,24 @@ export default function ResumeBuilderPage() {
                   size='small'
                   value={contactInfo.linkedIn}
                   onChange={(e) => handleContactChange('linkedIn', e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='GitHub Profile (optional)'
+                  fullWidth
+                  size='small'
+                  value={contactInfo.github}
+                  onChange={(e) => handleContactChange('github', e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label='Portfolio Website (optional)'
+                  fullWidth
+                  size='small'
+                  value={contactInfo.portfolio}
+                  onChange={(e) => handleContactChange('portfolio', e.target.value)}
                 />
               </Grid>
             </Grid>
@@ -554,82 +659,199 @@ export default function ResumeBuilderPage() {
               mb: 4,
               borderRadius: 2,
               backgroundColor: '#fafafa',
+              maxWidth: 800,
+              mx: 'auto',
             }}
           >
             <Typography variant='h6' gutterBottom sx={{ fontWeight: 'bold', color: '#1976d2' }}>
-              Please add your educational background
+              Educational Background
             </Typography>
-            {education.map((edu, index) => (
-              <Box
-                key={index}
-                sx={{
-                  mb: 3,
-                  position: 'relative',
-                  borderRadius: 2,
-                }}
-              >
-                <IconButton
-                  onClick={() => removeEducation(index)}
-                  sx={{
-                    position: 'absolute',
-                    top: -12,
-                    right: -12,
-                    zIndex: 1,
-                    backgroundColor: '#fff',
-                    boxShadow: 1,
-                    '&:hover': {
-                      backgroundColor: '#fce4e4',
-                    },
-                  }}
-                  aria-label='delete education'
+            {/* 10th Board */}
+            <Box sx={{ mb: 3, p: 2, border: '1px dashed #ccc', borderRadius: 2 }}>
+              <Typography variant='subtitle1' sx={{ mb: 2, fontWeight: 'bold' }}>
+                10th Board
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    label='Board'
+                    fullWidth
+                    value={education.tenth.board}
+                    onChange={(e) => handleEducationChange('tenth', 'board', e.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    label='Passing Year'
+                    fullWidth
+                    value={education.tenth.passingYear}
+                    onChange={(e) => handleEducationChange('tenth', 'passingYear', e.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    label='Percentage'
+                    fullWidth
+                    value={education.tenth.percentage}
+                    onChange={(e) => handleEducationChange('tenth', 'percentage', e.target.value)}
+                  />
+                </Grid>
+              </Grid>
+            </Box>
+            {/* 12th or Diploma */}
+            <Box sx={{ mb: 3, p: 2, border: '1px dashed #ccc', borderRadius: 2 }}>
+              <Typography variant='subtitle1' sx={{ mb: 2, fontWeight: 'bold' }}>
+                12th / Diploma
+              </Typography>
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <InputLabel>Type</InputLabel>
+                <Select
+                  value={education.twelfthOrDiploma.type}
+                  onChange={(e) => handleTwelfthOrDiplomaTypeChange(e.target.value)}
+                  label='Type'
                 >
-                  <DeleteIcon color='error' />
-                </IconButton>
-                <Box
-                  sx={{
-                    p: 2,
-                    border: '1px dashed #ccc',
-                    borderRadius: 2,
-                    backgroundColor: '#fff',
-                  }}
-                >
+                  <MenuItem value='12th'>12th Board</MenuItem>
+                  <MenuItem value='Diploma'>Diploma</MenuItem>
+                </Select>
+              </FormControl>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    label={education.twelfthOrDiploma.type === '12th' ? 'Board' : 'Institution'}
+                    fullWidth
+                    value={education.twelfthOrDiploma.type === '12th' ? education.twelfthOrDiploma.board : education.twelfthOrDiploma.institution}
+                    onChange={(e) => handleEducationChange('twelfthOrDiploma', education.twelfthOrDiploma.type === '12th' ? 'board' : 'institution', e.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    label='Passing Year'
+                    fullWidth
+                    value={education.twelfthOrDiploma.passingYear}
+                    onChange={(e) => handleEducationChange('twelfthOrDiploma', 'passingYear', e.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    label='Percentage'
+                    fullWidth
+                    value={education.twelfthOrDiploma.percentage}
+                    onChange={(e) => handleEducationChange('twelfthOrDiploma', 'percentage', e.target.value)}
+                  />
+                </Grid>
+              </Grid>
+            </Box>
+            {/* Bachelor's Degree */}
+            <Box sx={{ mb: 3, p: 2, border: '1px dashed #ccc', borderRadius: 2 }}>
+              <Typography variant='subtitle1' sx={{ mb: 2, fontWeight: 'bold' }}>
+                Bachelor’s Degree
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label='Degree'
+                    fullWidth
+                    value={education.bachelor.degree}
+                    onChange={(e) => handleEducationChange('bachelor', 'degree', e.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label='Branch'
+                    fullWidth
+                    value={education.bachelor.branch}
+                    onChange={(e) => handleEducationChange('bachelor', 'branch', e.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label='Institution'
+                    fullWidth
+                    value={education.bachelor.institution}
+                    onChange={(e) => handleEducationChange('bachelor', 'institution', e.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                  <TextField
+                    label='Passing Year'
+                    fullWidth
+                    value={education.bachelor.passingYear}
+                    onChange={(e) => handleEducationChange('bachelor', 'passingYear', e.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={3}>
+                  <TextField
+                    label='CGPA'
+                    fullWidth
+                    value={education.bachelor.cgpa}
+                    onChange={(e) => handleEducationChange('bachelor', 'cgpa', e.target.value)}
+                  />
+                </Grid>
+              </Grid>
+            </Box>
+            {/* Master's Degree (Optional) */}
+            <Box sx={{ mb: 3 }}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={education.master.hasMaster}
+                    onChange={handleMasterToggle}
+                    color='primary'
+                  />
+                }
+                label='I have a Master’s Degree'
+                sx={{ mb: 2 }}
+              />
+              {education.master.hasMaster && (
+                <Box sx={{ p: 2, border: '1px dashed #ccc', borderRadius: 2 }}>
+                  <Typography variant='subtitle1' sx={{ mb: 2, fontWeight: 'bold' }}>
+                    Master’s Degree
+                  </Typography>
                   <Grid container spacing={2}>
-                    <Grid item xs={12} sm={4}>
+                    <Grid item xs={12} sm={6}>
                       <TextField
                         label='Degree'
                         fullWidth
-                        value={edu.degree}
-                        onChange={(e) => handleEducationChange(index, 'degree', e.target.value)}
+                        value={education.master.degree}
+                        onChange={(e) => handleEducationChange('master', 'degree', e.target.value)}
                       />
                     </Grid>
-                    <Grid item xs={12} sm={4}>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        label='Branch'
+                        fullWidth
+                        value={education.master.branch}
+                        onChange={(e) => handleEducationChange('master', 'branch', e.target.value)}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
                       <TextField
                         label='Institution'
                         fullWidth
-                        value={edu.institution}
-                        onChange={(e) => handleEducationChange(index, 'institution', e.target.value)}
+                        value={education.master.institution}
+                        onChange={(e) => handleEducationChange('master', 'institution', e.target.value)}
                       />
                     </Grid>
-                    <Grid item xs={12} sm={4}>
+                    <Grid item xs={12} sm={3}>
                       <TextField
-                        label='Year'
+                        label='Passing Year'
                         fullWidth
-                        value={edu.year}
-                        onChange={(e) => handleEducationChange(index, 'year', e.target.value)}
+                        value={education.master.passingYear}
+                        onChange={(e) => handleEducationChange('master', 'passingYear', e.target.value)}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={3}>
+                      <TextField
+                        label='CGPA'
+                        fullWidth
+                        value={education.master.cgpa}
+                        onChange={(e) => handleEducationChange('master', 'cgpa', e.target.value)}
                       />
                     </Grid>
                   </Grid>
                 </Box>
-              </Box>
-            ))}
-            <Button
-              variant='outlined'
-              startIcon={<AddIcon />}
-              onClick={addEducation}
-              sx={{ mt: 2 }}
-            >
-              Add Education
-            </Button>
+              )}
+            </Box>
           </Paper>
         );
       case 4:
@@ -726,21 +948,21 @@ export default function ResumeBuilderPage() {
                         }
                       />
                     </Grid>
-                    {isFresher && (
-                      <Grid item xs={12}>
-                        <TextField
-                          label='Description'
-                          fullWidth
-                          multiline
-                          rows={3}
-                          placeholder='Describe your responsibilities and achievements'
-                          value={item.description}
-                          onChange={(e) =>
-                            handleInternshipChange(index, 'description', e.target.value)
-                          }
-                        />
-                      </Grid>
-                    )}
+                    <Grid item xs={12}>
+                      <TextField
+                        label='Description'
+                        fullWidth
+                        multiline
+                        rows={3}
+                        placeholder='Describe your responsibilities and achievements'
+                        value={item.description}
+                        onChange={(e) =>
+                          isFresher
+                            ? handleInternshipChange(index, 'description', e.target.value)
+                            : handleWorkExpChange(index, 'description', e.target.value)
+                        }
+                      />
+                    </Grid>
                   </Grid>
                 </Box>
               </Box>
@@ -890,6 +1112,152 @@ export default function ResumeBuilderPage() {
         );
       case 7:
         return (
+          <Paper
+            sx={{
+              p: 3,
+              mb: 4,
+              maxWidth: 800,
+              mx: 'auto',
+              borderRadius: 2,
+              boxShadow: 3,
+            }}
+          >
+            <Typography
+              variant="h6"
+              gutterBottom
+              sx={{ fontWeight: 'bold', color: 'primary.main', mb: 2 }}
+            >
+              Certificates
+            </Typography>
+            {certificates.map((cert, idx) => (
+              <Box
+                key={idx}
+                sx={{
+                  mb: 3,
+                  p: 2,
+                  border: '1px solid #ccc',
+                  borderRadius: 2,
+                  backgroundColor: '#fafafa',
+                }}
+              >
+                <Grid container spacing={2} alignItems="center">
+                  <Grid item xs={12} sm={5}>
+                    <TextField
+                      label="Certificate Name"
+                      fullWidth
+                      size="small"
+                      value={cert.name}
+                      onChange={(e) => {
+                        const updated = [...certificates];
+                        updated[idx].name = e.target.value;
+                        setCertificates(updated);
+                      }}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={5}>
+                    <Button
+                      variant="outlined"
+                      component="label"
+                      fullWidth
+                      sx={{ fontSize: '0.8rem' }}
+                    >
+                      {cert.file ? cert.file.name : 'Select Certificate File'}
+                      <input
+                        type="file"
+                        hidden
+                        accept="application/pdf,image/*"
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            const updated = [...certificates];
+                            updated[idx].file = file;
+                            setCertificates(updated);
+                          }
+                        }}
+                      />
+                    </Button>
+                  </Grid>
+                  <Grid item xs={12} sm={2}>
+                    <Button
+                      variant="outlined"
+                      color="error"
+                      onClick={() => setCertificates(certificates.filter((_, i) => i !== idx))}
+                      size="small"
+                    >
+                      Remove
+                    </Button>
+                  </Grid>
+                </Grid>
+              </Box>
+            ))}
+            <Box sx={{ textAlign: 'center', mt: 2 }}>
+              <Button
+                variant="contained"
+                onClick={() =>
+                  setCertificates([...certificates, { name: '', file: null }])
+                }
+              >
+                + Add Certificate
+              </Button>
+            </Box>
+          </Paper>
+        );
+      case 8:
+        return (
+          <Paper sx={{ p: 3, mb: 4, borderRadius: 2 }}>
+            <Typography
+              variant='h5'
+              gutterBottom
+              sx={{ fontWeight: 'bold', color: '#1976d2' }}
+            >
+              Add Interests
+            </Typography>
+            <Grid container spacing={2}>
+              {interests.map((interest, index) => (
+                <Grid item xs={12} sm={6} md={4} key={index}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography>{interest}</Typography>
+                    <IconButton
+                      onClick={() => removeInterest(index)}
+                      color='error'
+                      aria-label='delete interest'
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Box>
+                </Grid>
+              ))}
+              <Grid item xs={12}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    gap: 2,
+                    mt: 1,
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    alignItems: { sm: 'center' },
+                  }}
+                >
+                  <TextField
+                    label='Add Interest'
+                    value={customInterest}
+                    onChange={(e) => setCustomInterest(e.target.value)}
+                    fullWidth
+                  />
+                  <Button
+                    variant='contained'
+                    onClick={addCustomInterest}
+                    disabled={!customInterest.trim()}
+                    sx={{ whiteSpace: 'nowrap', mt: { xs: 1, sm: 0 } }}
+                  >
+                    Add Interest
+                  </Button>
+                </Box>
+              </Grid>
+            </Grid>
+          </Paper>
+        );
+      case 9:
+        return (
           <Box>
             <Typography variant='h5' gutterBottom>
               Choose Resume Template
@@ -948,244 +1316,337 @@ export default function ResumeBuilderPage() {
     }
   };
 
-const ModernResume = () => {
-  const isModern = selectedTemplate === 'modern';
+  const ModernResume = () => {
+    const isModern = selectedTemplate === 'modern';
 
-  return (
-    <Box
-      id='resume'
-      sx={{
-        p: isModern ? 4 : 3,
-        maxWidth: '800px',
-        margin: 'auto',
-        bgcolor: 'white',
-        boxShadow: 3,
-        border: isModern ? '1px solid #e0e0e0' : 'none',
-        fontFamily: isModern ? "'Roboto', sans-serif" : "'Times New Roman', Times, serif",
-        color: '#333',
-      }}
-    >
-      {/* Header Section with Profile Image and Contact Info */}
+    return (
       <Box
+        id='resume'
         sx={{
-          display: 'flex',
-          flexDirection: profileImage ? 'row' : 'column',
-          alignItems: profileImage ? 'flex-start' : isModern ? 'flex-start' : 'center',
-          gap: profileImage ? 2 : 0,
-          borderBottom: isModern ? '3px solid #1976d2' : '2px solid #000',
-          pb: 2,
-          mb: 3,
-          textAlign: profileImage ? 'left' : isModern ? 'left' : 'center',
+          p: isModern ? 4 : 3,
+          maxWidth: '800px',
+          margin: 'auto',
+          bgcolor: 'white',
+          boxShadow: 3,
+          border: isModern ? '1px solid #e0e0e0' : 'none',
+          fontFamily: isModern ? "'Roboto', sans-serif" : "'Times New Roman', Times, serif",
+          color: '#333',
         }}
       >
-        {/* Profile Image */}
-        {profileImage && (
-          <Box
-            component='img'
-            src={typeof profileImage === 'string' ? profileImage : URL.createObjectURL(profileImage)}
-            alt='Profile'
-            sx={{
-              width: '120px',
-              height: '120px',
-              borderRadius: isModern ? '50%' : '0',
-              objectFit: 'cover',
-              border: isModern ? '2px solid #e0e0e0' : '1px solid #000',
-            }}
-          />
-        )}
-        {/* Name and Contact Info */}
-        <Box sx={{ flex: 1 }}>
-          <Typography
-            variant='h3'
-            sx={{
-              fontWeight: isModern ? 'bold' : 'normal',
-              fontSize: isModern ? '2.5rem' : '2rem',
-              color: isModern ? '#1976d2' : '#000',
-            }}
-          >
-            {contactInfo.firstName} {contactInfo.lastName}
-          </Typography>
-          <Typography
-            variant='body1'
-            sx={{
-              fontSize: isModern ? '1rem' : '0.9rem',
-              color: isModern ? '#555' : '#000',
-              mt: isModern ? 1 : 0,
-            }}
-          >
-            {contactInfo.email} | {contactInfo.phone}
-            {contactInfo.linkedIn && ` | ${contactInfo.linkedIn}`}
-            {contactInfo.location &&
-              ` | ${contactInfo.location}${contactInfo.zipCode ? `, ${contactInfo.zipCode}` : ''}`}
-            {contactInfo.country && `, ${contactInfo.country}`}
-          </Typography>
-        </Box>
-      </Box>
-
-      {/* Rest of the ModernResume component remains unchanged */}
-      {jobTitle && (
-        <Box sx={{ mb: 3 }}>
-          <Typography
-            variant='h5'
-            sx={{
-              fontWeight: isModern ? 'bold' : 'normal',
-              fontSize: isModern ? '1.25rem' : '1.1rem',
-              color: isModern ? '#1976d2' : '#000',
-              borderBottom: isModern ? '2px solid #e0e0e0' : '1px solid #000',
-              pb: 0.5,
-            }}
-          >
-            {isModern ? 'Career Objective' : 'Objective'}
-          </Typography>
-          <Typography sx={{ mt: 1, fontSize: '0.95rem' }}>
-            Seeking a position as a {jobTitle} to leverage my skills and experience in a dynamic environment.
-          </Typography>
-        </Box>
-      )}
-      {selectedSkills.length > 0 && (
-        <Box sx={{ mb: 3 }}>
-          <Typography
-            variant='h5'
-            sx={{
-              fontWeight: isModern ? 'bold' : 'normal',
-              fontSize: isModern ? '1.25rem' : '1.1rem',
-              color: isModern ? '#1976d2' : '#000',
-              borderBottom: isModern ? '2px solid #e0e0e0' : '1px solid #000',
-              pb: 0.5,
-            }}
-          >
-            Skills
-          </Typography>
-          <Box
-            sx={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 1,
-              mt: 1,
-            }}
-          >
-            {selectedSkills.map((skill, index) => (
-              <Typography
-                key={index}
-                sx={{
-                  fontSize: '0.95rem',
-                  backgroundColor: isModern ? '#e3f2fd' : 'transparent',
-                  borderRadius: isModern ? '12px' : 'none',
-                  padding: isModern ? '4px 12px' : '0',
-                  display: 'inline-block',
-                }}
-              >
-                {skill}
-              </Typography>
-            ))}
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: profileImage ? 'row' : 'column',
+            alignItems: profileImage ? 'flex-start' : isModern ? 'flex-start' : 'center',
+            gap: profileImage ? 2 : 0,
+            borderBottom: isModern ? '3px solid #1976d2' : '2px solid #000',
+            pb: 2,
+            mb: 3,
+            textAlign: profileImage ? 'left' : isModern ? 'left' : 'center',
+          }}
+        >
+          {profileImage && (
+            <Box
+              component='img'
+              src={typeof profileImage === 'string' ? profileImage : URL.createObjectURL(profileImage)}
+              alt='Profile'
+              sx={{
+                width: '120px',
+                height: '120px',
+                borderRadius: isModern ? '50%' : '0',
+                objectFit: 'cover',
+                border: isModern ? '2px solid #e0e0e0' : '1px solid #000',
+              }}
+            />
+          )}
+          <Box sx={{ flex: 1 }}>
+            <Typography
+              variant='h3'
+              sx={{
+                fontWeight: isModern ? 'bold' : 'normal',
+                fontSize: isModern ? '2.5rem' : '2rem',
+                color: isModern ? '#1976d2' : '#000',
+              }}
+            >
+              {contactInfo.firstName} {contactInfo.lastName}
+            </Typography>
+            <Typography
+              variant='body1'
+              sx={{
+                fontSize: isModern ? '1rem' : '0.9rem',
+                color: isModern ? 'text.secondary' : '#000',
+                mt: isModern ? 1 : 0,
+              }}
+            >
+              {contactInfo.email} | {contactInfo.phone}
+              {contactInfo.dob && ` | DOB: ${contactInfo.dob}`}
+              {contactInfo.linkedIn && ` | ${contactInfo.linkedIn}`}
+              {contactInfo.github && ` | ${contactInfo.github}`}
+              {contactInfo.portfolio && ` | ${contactInfo.portfolio}`}
+              {contactInfo.location &&
+                ` | ${contactInfo.location}${contactInfo.zipCode ? `, ${contactInfo.zipCode}` : ''}`}
+              {contactInfo.country && `, ${contactInfo.country}`}
+            </Typography>
           </Box>
         </Box>
-      )}
-      {(workExperience.length > 0 || internships.length > 0) && (
-        <Box sx={{ mb: 3 }}>
-          <Typography
-            variant='h5'
-            sx={{
-              fontWeight: isModern ? 'bold' : 'normal',
-              fontSize: isModern ? '1.25rem' : '1.1rem',
-              color: isModern ? '#1976d2' : '#000',
-              borderBottom: isModern ? '2px solid #e0e0e0' : '1px solid #000',
-              pb: 0.5,
-            }}
-          >
-            {isFresher ? 'Internships' : 'Work Experience'}
-          </Typography>
-          {isFresher
-            ? internships.map((intern, index) => (
-                <Box key={index} sx={{ mt: 2 }}>
-                  <Typography sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
-                    {intern.role} - {intern.company}
-                  </Typography>
-                  <Typography sx={{ fontSize: '0.9rem', color: '#555' }}>
-                    {intern.startDate} - {intern.endDate}
-                  </Typography>
-                  <Typography sx={{ fontSize: '0.9rem', mt: 1 }}>
-                    {intern.description}
-                  </Typography>
-                </Box>
-              ))
-            : workExperience.map((exp, index) => (
-                <Box key={index} sx={{ mt: 2 }}>
-                  <Typography sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
-                    {exp.role} - {exp.company}
-                  </Typography>
-                  <Typography sx={{ fontSize: '0.9rem', color: '#555' }}>
-                    {exp.startDate} - {exp.endDate}
-                  </Typography>
-                </Box>
-              ))}
-        </Box>
-      )}
-      {projects.length > 0 && (
-        <Box sx={{ mb: 3 }}>
-          <Typography
-            variant='h5'
-            sx={{
-              fontWeight: isModern ? 'bold' : 'normal',
-              fontSize: isModern ? '1.25rem' : '1.1rem',
-              color: isModern ? '#1976d2' : '#000',
-              borderBottom: isModern ? '2px solid #e0e0e0' : '1px solid #000',
-              pb: 0.5,
-            }}
-          >
-            Projects
-          </Typography>
-          {projects.map((project, index) => (
-            <Box key={index} sx={{ mt: 2 }}>
-              <Typography sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
-                {project.title}
-              </Typography>
-              <Typography sx={{ fontSize: '0.9rem', color: '#555' }}>
-                Tech Stack: {project.techStack}
-              </Typography>
-              <Typography sx={{ fontSize: '0.9rem', mt: 1 }}>
-                {project.description}
-              </Typography>
-              {project.link && (
-                <Typography sx={{ fontSize: '0.9rem', color: '#1976d2', mt: 0.5 }}>
-                  <a href={project.link} target='_blank' rel='noopener noreferrer'>
-                    {project.link}
-                  </a>
+        {jobTitle && (
+          <Box sx={{ mb: 3 }}>
+            <Typography
+              variant='h5'
+              sx={{
+                fontWeight: isModern ? 'bold' : 'normal',
+                fontSize: isModern ? '1.25rem' : '1.1rem',
+                color: isModern ? '#1976d2' : '#000',
+                borderBottom: isModern ? '2px solid #e0e0e0' : '1px solid #000',
+                pb: 0.5,
+              }}
+            >
+              {isModern ? 'Career Objective' : 'Objective'}
+            </Typography>
+            <Typography sx={{ mt: 1, fontSize: '0.95rem' }}>
+              Seeking a position as a {jobTitle} to leverage my skills and experience in a dynamic environment.
+            </Typography>
+          </Box>
+        )}
+        {selectedSkills.length > 0 && (
+          <Box sx={{ mb: 3 }}>
+            <Typography
+              variant='h5'
+              sx={{
+                fontWeight: isModern ? 'bold' : 'normal',
+                fontSize: isModern ? '1.25rem' : '1.1rem',
+                color: isModern ? '#1976d2' : '#000',
+                borderBottom: isModern ? '2px solid #e0e0e0' : '1px solid #000',
+                pb: 0.5,
+              }}
+            >
+              Skills
+            </Typography>
+            <Box
+              sx={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 1,
+                mt: 1,
+              }}
+            >
+              {selectedSkills.map((skill, index) => (
+                <Typography
+                  key={index}
+                  sx={{
+                    fontSize: '0.95rem',
+                    backgroundColor: isModern ? '#e3f2fd' : 'transparent',
+                    borderRadius: isModern ? '12px' : 'none',
+                    padding: isModern ? '4px 12px' : '0',
+                    display: 'inline-block',
+                  }}
+                >
+                  {skill}
                 </Typography>
-              )}
+              ))}
             </Box>
-          ))}
-        </Box>
-      )}
-      {education.length > 0 && (
-        <Box sx={{ mb: 3 }}>
-          <Typography
-            variant='h5'
-            sx={{
-              fontWeight: isModern ? 'bold' : 'normal',
-              fontSize: isModern ? '1.25rem' : '1.1rem',
-              color: isModern ? '#1976d2' : '#000',
-              borderBottom: isModern ? '2px solid #e0e0e0' : '1px solid #000',
-              pb: 0.5,
-            }}
-          >
-            Education
-          </Typography>
-          {education.map((edu, index) => (
-            <Box key={index} sx={{ mt: 2 }}>
-              <Typography sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
-                {edu.degree} - {edu.institution}
-              </Typography>
-              <Typography sx={{ fontSize: '0.9rem', color: '#555' }}>
-                {edu.year}
-              </Typography>
+          </Box>
+        )}
+        {(education.tenth.board || education.twelfthOrDiploma.board || education.twelfthOrDiploma.institution || education.bachelor.degree || (education.master.hasMaster && education.master.degree)) && (
+          <Box sx={{ mb: 3 }}>
+            <Typography
+              variant='h5'
+              sx={{
+                fontWeight: isModern ? 'bold' : 'normal',
+                fontSize: isModern ? '1.25rem' : '1.1rem',
+                color: isModern ? '#1976d2' : '#000',
+                borderBottom: isModern ? '2px solid #e0e0e0' : '1px solid #000',
+                pb: 0.5,
+              }}
+            >
+              Education
+            </Typography>
+            {education.tenth.board && (
+              <Box sx={{ mt: 2 }}>
+                <Typography sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
+                  10th Board - {education.tenth.board}
+                </Typography>
+                <Typography sx={{ fontSize: '0.9rem', color: 'text.secondary' }}>
+                  Passing Year: {education.tenth.passingYear} | Percentage: {education.tenth.percentage}%
+                </Typography>
+              </Box>
+            )}
+            {(education.twelfthOrDiploma.board || education.twelfthOrDiploma.institution) && (
+              <Box sx={{ mt: 2 }}>
+                <Typography sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
+                  {education.twelfthOrDiploma.type === '12th' ? '12th Board' : 'Diploma'} - {education.twelfthOrDiploma.type === '12th' ? education.twelfthOrDiploma.board : education.twelfthOrDiploma.institution}
+                </Typography>
+                <Typography sx={{ fontSize: '0.9rem', color: 'text.secondary' }}>
+                  Passing Year: {education.twelfthOrDiploma.passingYear} | Percentage: {education.twelfthOrDiploma.percentage}%
+                </Typography>
+              </Box>
+            )}
+            {education.bachelor.degree && (
+              <Box sx={{ mt: 2 }}>
+                <Typography sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
+                  {education.bachelor.degree} ({education.bachelor.branch}) - {education.bachelor.institution}
+                </Typography>
+                <Typography sx={{ fontSize: '0.9rem', color: 'text.secondary' }}>
+                  Passing Year: {education.bachelor.passingYear} | CGPA: {education.bachelor.cgpa}
+                </Typography>
+              </Box>
+            )}
+            {education.master.hasMaster && education.master.degree && (
+              <Box sx={{ mt: 2 }}>
+                <Typography sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
+                  {education.master.degree} ({education.master.branch}) - {education.master.institution}
+                </Typography>
+                <Typography sx={{ fontSize: '0.9rem', color: 'text.secondary' }}>
+                  Passing Year: {education.master.passingYear} | CGPA: {education.master.cgpa}
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        )}
+        {(workExperience.length > 0 || internships.length > 0) && (
+          <Box sx={{ mb: 3 }}>
+            <Typography
+              variant='h5'
+              sx={{
+                fontWeight: isModern ? 'bold' : 'normal',
+                fontSize: isModern ? '1.25rem' : '1.1rem',
+                color: isModern ? '#1976d2' : '#000',
+                borderBottom: isModern ? '2px solid #e0e0e0' : '1px solid #000',
+                pb: 0.5,
+              }}
+            >
+              {isFresher ? 'Internships' : 'Work Experience'}
+            </Typography>
+            {isFresher
+              ? internships.map((intern, index) => (
+                  <Box key={index} sx={{ mt: 2 }}>
+                    <Typography sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
+                      {intern.role} - {intern.company}
+                    </Typography>
+                    <Typography sx={{ fontSize: '0.9rem', color: 'text.secondary' }}>
+                      {intern.startDate} - {intern.endDate}
+                    </Typography>
+                    <Typography sx={{ fontSize: '0.9rem', mt: 1 }}>
+                      {intern.description}
+                    </Typography>
+                  </Box>
+                ))
+              : workExperience.map((exp, index) => (
+                  <Box key={index} sx={{ mt: 2 }}>
+                    <Typography sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
+                      {exp.role} - {exp.company}
+                    </Typography>
+                    <Typography sx={{ fontSize: '0.9rem', color: 'text.secondary' }}>
+                      {exp.startDate} - {exp.endDate}
+                    </Typography>
+                    <Typography sx={{ fontSize: '0.9rem', mt: 1 }}>
+                      {exp.description}
+                    </Typography>
+                  </Box>
+                ))}
+          </Box>
+        )}
+        {projects.length > 0 && (
+          <Box sx={{ mb: 3 }}>
+            <Typography
+              variant='h5'
+              sx={{
+                fontWeight: isModern ? 'bold' : 'normal',
+                fontSize: isModern ? '1.25rem' : '1.1rem',
+                color: isModern ? '#1976d2' : '#000',
+                borderBottom: isModern ? '2px solid #e0e0e0' : '1px solid #000',
+                pb: 0.5,
+              }}
+            >
+              Projects
+            </Typography>
+            {projects.map((project, index) => (
+              <Box key={index} sx={{ mt: 2 }}>
+                <Typography sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
+                  {project.title}
+                </Typography>
+                <Typography sx={{ fontSize: '0.9rem', color: 'text.secondary' }}>
+                  Tech Stack: {project.techStack}
+                </Typography>
+                <Typography sx={{ fontSize: '0.9rem', mt: 1 }}>
+                  {project.description}
+                </Typography>
+                {project.link && (
+                  <Typography sx={{ fontSize: '0.9rem', color: '#1976d2', mt: 0.5 }}>
+                    <a href={project.link} target='_blank' rel='noopener noreferrer'>
+                      {project.link}
+                    </a>
+                  </Typography>
+                )}
+              </Box>
+            ))}
+          </Box>
+        )}
+        {certificates.length > 0 && (
+          <Box sx={{ mb: 3 }}>
+            <Typography
+              variant='h5'
+              sx={{
+                fontWeight: isModern ? 'bold' : 'normal',
+                fontSize: isModern ? '1.25rem' : '1.1rem',
+                color: isModern ? '#1976d2' : '#000',
+                borderBottom: isModern ? '2px solid #e0e0e0' : '1px solid #000',
+                pb: 0.5,
+              }}
+            >
+              Certificates
+            </Typography>
+            {certificates.map((cert, index) => (
+              <Box key={index} sx={{ mt: 2 }}>
+                <Typography sx={{ fontWeight: 'bold', fontSize: '1rem' }}>
+                  {cert.name}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+        )}
+        {interests.length > 0 && (
+          <Box sx={{ mb: 3 }}>
+            <Typography
+              variant='h5'
+              sx={{
+                fontWeight: isModern ? 'bold' : 'normal',
+                fontSize: isModern ? '1.25rem' : '1.1rem',
+                color: isModern ? '#1976d2' : '#000',
+                borderBottom: isModern ? '2px solid #e0e0e0' : '1px solid #000',
+                pb: 0.5,
+              }}
+            >
+              Interests
+            </Typography>
+            <Box
+              sx={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: 1,
+                mt: 1,
+              }}
+            >
+              {interests.map((interest, index) => (
+                <Typography
+                  key={index}
+                  sx={{
+                    fontSize: '0.95rem',
+                    backgroundColor: isModern ? '#e3f2fd' : 'transparent',
+                    borderRadius: isModern ? '12px' : 'none',
+                    padding: isModern ? '4px 12px' : '0',
+                    display: 'inline-block',
+                  }}
+                >
+                  {interest}
+                </Typography>
+              ))}
             </Box>
-          ))}
-        </Box>
-      )}
-    </Box>
-  );
-};
+          </Box>
+        )}
+      </Box>
+    );
+  };
 
   if (loading) return <Typography>Loading profile data...</Typography>;
   if (error)
@@ -1197,7 +1658,7 @@ const ModernResume = () => {
           onClick={() => router.push('/user/profile')}
           sx={{ mt: 2 }}
         >
-          Profile Complete
+          Go to Profile
         </Button>
       </Box>
     );
@@ -1227,12 +1688,30 @@ const ModernResume = () => {
             variant='contained'
             onClick={handleNext}
             disabled={
-              (activeStep === 0 && !resumeFile && !noResume) ||
-              (activeStep === 3 && education.length === 0) ||
-              (activeStep === 4 && !isFresher && workExperience.length === 0) ||
-              (activeStep === 4 && isFresher && internships.length === 0) ||
-              (activeStep === 5 && projects.length === 0) ||
-              (activeStep === 6 && selectedSkills.length === 0)
+              (activeStep === 0 && !resumeFile && !noResume) 
+              // || (activeStep === 3 &&
+              //   (!education.tenth.board ||
+              //    !education.tenth.passingYear ||
+              //    !education.tenth.percentage ||
+              //    (education.twelfthOrDiploma.type === '12th' && !education.twelfthOrDiploma.board) ||
+              //    (education.twelfthOrDiploma.type === 'Diploma' && !education.twelfthOrDiploma.institution) ||
+              //    !education.twelfthOrDiploma.passingYear ||
+              //    !education.twelfthOrDiploma.percentage ||
+              //    !education.bachelor.degree ||
+              //    !education.bachelor.branch ||
+              //    !education.bachelor.institution ||
+              //    !education.bachelor.passingYear ||
+              //    !education.bachelor.cgpa ||
+              //    (education.master.hasMaster &&
+              //     (!education.master.degree ||
+              //      !education.master.branch ||
+              //      !education.master.institution ||
+              //      !education.master.passingYear ||
+              //      !education.master.cgpa)))) ||
+              // (activeStep === 4 && !isFresher && workExperience.length === 0) ||
+              // (activeStep === 4 && isFresher && internships.length === 0) ||
+              // (activeStep === 5 && projects.length === 0) ||
+              // (activeStep === 6 && selectedSkills.length === 0)
             }
           >
             Continue
