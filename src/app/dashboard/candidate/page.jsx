@@ -15,14 +15,54 @@ import {
   CircularProgress
 } from '@mui/material';
 import axios from 'axios';
-// 1. IMPORT YOUR MODAL (adjust the path if it's different)
 import UserDetailsModal from '../userDetailsPopup/page.jsx';
+
+// Helper function for all deeply nested property access
+const getValue = (user, key) => {
+  if (!user) return '--';
+  switch (key) {
+    case 'name':
+      return user.candidateId?.fullName || user.userId?.fullName || user.fullName || user.name || '--';
+    case 'email':
+      return user.candidateId?.email || user.userId?.email || user.email || '--';
+    case 'role':
+      // Show full desirableJob if it's an array (comma separated), or as-is if string
+      if (Array.isArray(user.candidateId?.desirableJob) && user.candidateId.desirableJob.length > 0) {
+        return user.candidateId.desirableJob.join(', ');
+      } else if (typeof user.candidateId?.desirableJob === 'string') {
+        return user.candidateId.desirableJob;
+      } else if (Array.isArray(user.desirableJob) && user.desirableJob.length > 0) {
+        return user.desirableJob.join(', ');
+      } else if (typeof user.desirableJob === 'string') {
+        return user.desirableJob;
+      } else {
+        return '--';
+      }
+    case 'experience':
+  if (Array.isArray(user.candidateId?.experience) && user.candidateId.experience.length > 0) {
+    return user.candidateId.experience[0].years ?? '--';
+  } else if (Array.isArray(user.experience) && user.experience.length > 0) {
+    return user.experience[0].years ?? '--';
+  }
+  return '--';
+
+      case 'profileCompletion':
+      if (user.candidateId?.profileCompletion !== undefined) return user.candidateId.profileCompletion;
+      if (user.profileCompletion !== undefined) return user.profileCompletion;
+      return undefined;
+    case 'testScore':
+      return user.testScore?.points;
+    case 'resumeStatus':
+      return user.resumeStatus ?? '--';
+    default:
+      return '--';
+  }
+};
 
 export default function CandidatesPage() {
   const [candidates, setCandidates] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // 2. State for controlling the modal
   const [selectedCandidate, setSelectedCandidate] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -31,7 +71,7 @@ export default function CandidatesPage() {
       try {
         const token = localStorage.getItem('authToken');
         const response = await axios.get(
-          'http://localhost:5000/api/admin-dashboard',
+          'http://localhost:5000/api/getAllUsers',
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setCandidates(response.data.dashboards || []);
@@ -45,7 +85,6 @@ export default function CandidatesPage() {
     fetchCandidates();
   }, []);
 
-  // 3. Functions to handle opening and closing the modal
   const handleViewDetails = (candidate) => {
     setSelectedCandidate(candidate);
     setIsModalOpen(true);
@@ -89,25 +128,23 @@ export default function CandidatesPage() {
                 <TableCell>Actions</TableCell>
               </TableRow>
             </TableHead>
-
             <TableBody>
               {candidates.map(candidate => {
-                const name = candidate.fullName || candidate.name || '--';
-                const email = candidate.email || '--';
-                const role =
-                  typeof candidate.desirableJob === 'string'
-                    ? candidate.desirableJob
-                    : candidate.desirableJob?.name || '--';
-                const experience =
-                  candidate.experience != null
-                    ? `${candidate.experience} year${candidate.experience > 1 ? 's' : ''}`
-                    : '--';
+                const name = getValue(candidate, 'name');
+                const email = getValue(candidate, 'email');
+                const role = getValue(candidate, 'role');
+                const experienceVal = getValue(candidate, 'experience');
+                const experience =  typeof experienceVal === 'number'
+                 ? `${experienceVal} year${experienceVal > 1 ? 's' : ''}`
+                 : '--';    
                 const profileCompletion =
-                  candidate.profileCompletion != null
-                    ? `${candidate.profileCompletion}%`
+                  getValue(candidate, 'profileCompletion') !== undefined
+                    ? `${getValue(candidate, 'profileCompletion')}%`
                     : '--';
-                const testScore = candidate.testScore?.points != null ? `${candidate.testScore.points}%` : '--';
-                const resumeStatus = candidate.resumeStatus || '--';
+                const testScore = getValue(candidate, 'testScore') !== undefined
+                  ? `${getValue(candidate, 'testScore')}%`
+                  : '--';
+                const resumeStatus = getValue(candidate, 'resumeStatus');
 
                 return (
                   <TableRow key={candidate._id}>
@@ -119,7 +156,6 @@ export default function CandidatesPage() {
                     <TableCell>{testScore}</TableCell>
                     <TableCell>{resumeStatus}</TableCell>
                     <TableCell>
-                      {/* 4. The button now opens the modal */}
                       <Button
                         size="small"
                         variant="outlined"
@@ -135,8 +171,6 @@ export default function CandidatesPage() {
           </Table>
         </TableContainer>
       </Paper>
-
-      {/* 5. The Modal component is here, ready to be displayed */}
       <UserDetailsModal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
