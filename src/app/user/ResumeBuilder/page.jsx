@@ -3,30 +3,30 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  Grid,
-  Typography,
-  IconButton,
-  TextField,
-  Paper,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  FormControlLabel,
-  Checkbox,
-  Stepper,
-  Step,
-  StepLabel,
-  FormHelperText,
+    Box,
+    Button,
+    Card,
+    CardContent,
+    Dialog,
+    DialogContent,
+    DialogTitle,
+    Grid,
+    Typography,
+    IconButton,
+    TextField,
+    Paper,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem,
+    FormControlLabel,
+    Checkbox,
+    Stepper,
+    Step,
+    StepLabel,
+    FormHelperText,
+    Container,
 } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -34,10 +34,11 @@ import axios from 'axios';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import PricingPopup from '../../../components/PremiumPopup';
+import Navbar from '../../../components/Navbar'; // Assumed path to your Navbar component
 
 const templates = [
-  { id: 'modern', name: 'Modern', description: 'Clean, sleek, and modern layout suited for tech roles.', preview: '/preview-modern.png' },
-  { id: 'classic', name: 'Classic', description: 'Traditional layout ideal for government or academic jobs.', preview: '/preview-classic.png' },
+    { id: 'modern', name: 'Modern', description: 'Clean, sleek, and modern layout suited for tech roles.', preview: '/preview-modern.png' },
+    { id: 'classic', name: 'Classic', description: 'Traditional layout ideal for government or academic jobs.', preview: '/preview-classic.png' },
 ];
 
 const steps = ['Upload Resume', 'Contact Information', 'Job Title', 'Educational Background', 'Work Experience', 'Project Details', 'Skills', 'Certificates', 'Interests', 'Choose Template'];
